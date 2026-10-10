@@ -1,0 +1,157 @@
+import { computed, reactive, shallowRef } from 'vue';
+import {
+  analyzeState,
+  applyMove,
+  applyMoves,
+  getSpec,
+  invertMove,
+  isSolved,
+  randomScramble,
+  solvedState,
+} from './core/cube.js';
+import { progress, solve } from './core/solver.js';
+
+export const store = reactive({
+  n: 3,
+  mode: 'setup', // setup | solve | learn | practice
+  editing: false,
+  brush: 0,
+  speed: 1,
+  busy: false,
+  solution: null, // result of solve()
+  pointer: 0, // number of solution moves already performed
+  solveError: '',
+  moveCount: 0,
+});
+
+export const cubeState = shallowRef(solvedState(3));
+
+let animator = null;
+let queue = Promise.resolve();
+const listeners = new Set();
+
+export function registerAnimator(fn) {
+  animator = fn;
+}
+
+export function onMove(fn) {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+
+export const validity = computed(() => analyzeState(cubeState.value, store.n));
+export const solved = computed(() => isSolved(cubeState.value, store.n));
+export const stageProgress = computed(() => progress(cubeState.value, store.n));
+
+function clearSolution() {
+  store.solution = null;
+  store.pointer = 0;
+  store.solveError = '';
+}
+
+// Replace the whole position (reset, scramble, painting, photo import).
+export function setPosition(state) {
+  queue = queue.then(() => {
+    cubeState.value = state;
+    clearSolution();
+    store.moveCount = 0;
+  });
+  return queue;
+}
+
+export function setSize(n) {
+  queue = queue.then(() => {
+    cubeState.value = solvedState(n);
+    store.n = n;
+    store.editing = false;
+    store.brush = 0;
+    clearSolution();
+    store.moveCount = 0;
+  });
+  return queue;
+}
+
+export function reset() {
+  return setPosition(solvedState(store.n));
+}
+
+export function scramble() {
+  const moves = randomScramble(store.n);
+  return setPosition(applyMoves(solvedState(store.n), store.n, moves)).then(() => moves);
+}
+
+export function paint(slot, color = store.brush) {
+  const spec = getSpec(store.n);
+  if (spec.cubies[spec.stickers[slot].cubie].kind === 'center' && store.n === 3) return;
+  const next = Uint8Array.from(cubeState.value);
+  next[slot] = color;
+  cubeState.value = next;
+  clearSolution();
+}
+
+// Perform one move, animated. `fromSolution` keeps the computed solution valid.
+export function turn(move, { animate = true, fromSolution = false } = {}) {
+  queue = queue.then(async () => {
+    const next = applyMove(cubeState.value, store.n, move);
+    store.busy = true;
+    try {
+      if (animate && animator) await animator(move, next, store.speed);
+    } finally {
+      store.busy = false;
+    }
+    cubeState.value = next;
+    if (!fromSolution) {
+      clearSolution();
+      store.moveCount++;
+    }
+    listeners.forEach((fn) => fn(move));
+  });
+  return queue;
+}
+
+export function turns(moves, opts) {
+  moves.forEach((m) => turn(m, opts));
+  return queue;
+}
+
+export async function computeSolution() {
+  store.solveError = '';
+  // Let the "Solving…" state paint before the (synchronous) search runs.
+  await new Promise((r) => setTimeout(r, 20));
+  const result = solve(cubeState.value, store.n);
+  if (!result.ok) {
+    store.solution = null;
+    store.solveError = result.error;
+    return null;
+  }
+  store.solution = result;
+  store.pointer = 0;
+  return result;
+}
+
+export function timeline() {
+  const sol = store.solution;
+  if (!sol) return [];
+  const out = [];
+  sol.stages.forEach((stage, si) => {
+    stage.steps.forEach((step, ti) => {
+      step.moves.forEach((move, mi) => out.push({ move, stage: si, step: ti, index: mi }));
+    });
+  });
+  return out;
+}
+
+export async function stepForward() {
+  const tl = timeline();
+  if (store.pointer >= tl.length) return;
+  const item = tl[store.pointer];
+  store.pointer++;
+  await turn(item.move, { fromSolution: true });
+}
+
+export async function stepBack() {
+  const tl = timeline();
+  if (store.pointer <= 0) return;
+  store.pointer--;
+  await turn(invertMove(tl[store.pointer].move), { fromSolution: true });
+}
