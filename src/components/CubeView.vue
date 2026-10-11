@@ -5,7 +5,6 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { FACE_COLOR_HEX, FACE_NORMALS, FACES, getSpec } from '../core/cube.js';
 
@@ -21,7 +20,9 @@ const host = ref(null);
 let renderer;
 let scene;
 let camera;
-let controls;
+const target = new THREE.Vector3(0, 0, 0);
+const MIN_DISTANCE = 4;
+const MAX_DISTANCE = 14;
 let cubeGroup;
 let raf = 0;
 let resizeObserver;
@@ -87,9 +88,11 @@ function recolor(state) {
 
 function resetView() {
   const d = props.n === 2 ? 4.6 : 6.2;
+  camera.up.set(0, 1, 0); // free rotation can leave the camera upside down
   camera.position.set(d * 0.75, d * 0.6, d);
-  controls.target.set(0, 0, 0);
-  controls.update();
+  camera.lookAt(target);
+  spin.vx = 0;
+  spin.vy = 0;
 }
 
 function resize() {
@@ -101,9 +104,100 @@ function resize() {
   camera.updateProjectionMatrix();
 }
 
+// --- Free rotation ---------------------------------------------------------------
+// Every pointer movement is applied directly (so fast mice are not under-counted) as a
+// rotation of the camera about its own right/up axes: no poles, no limit in any direction.
+// A full canvas height of dragging is one full turn, as with orbit controls.
+const spin = { vx: 0, vy: 0, dragging: false, lastX: 0, lastY: 0, lastT: 0 };
+const pointers = new Map();
+let pinchDistance = 0;
+const _q = new THREE.Quaternion();
+const _right = new THREE.Vector3();
+const _upAxis = new THREE.Vector3();
+const _eye = new THREE.Vector3();
+
+function rotateView(dxPx, dyPx) {
+  const height = renderer.domElement.clientHeight || 1;
+  const k = (2 * Math.PI) / height;
+  camera.updateMatrixWorld();
+  _right.setFromMatrixColumn(camera.matrixWorld, 0);
+  _upAxis.setFromMatrixColumn(camera.matrixWorld, 1);
+  // drag right/down: the cube follows the pointer (camera moves left/up around it)
+  _q.setFromAxisAngle(_upAxis, -dxPx * k);
+  _eye.copy(camera.position).sub(target).applyQuaternion(_q);
+  camera.up.applyQuaternion(_q);
+  _q.setFromAxisAngle(_right.applyQuaternion(_q), -dyPx * k);
+  _eye.applyQuaternion(_q);
+  camera.up.applyQuaternion(_q).normalize();
+  camera.position.copy(target).add(_eye);
+  camera.lookAt(target);
+}
+
+function zoomBy(factor) {
+  _eye.copy(camera.position).sub(target);
+  const distance = Math.min(MAX_DISTANCE, Math.max(MIN_DISTANCE, _eye.length() * factor));
+  camera.position.copy(target).add(_eye.setLength(distance));
+}
+
+function onViewPointerDown(e) {
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  renderer.domElement.setPointerCapture?.(e.pointerId);
+  if (pointers.size === 1) {
+    Object.assign(spin, { dragging: true, lastX: e.clientX, lastY: e.clientY, lastT: performance.now(), vx: 0, vy: 0 });
+  } else if (pointers.size === 2) {
+    const [a, b] = [...pointers.values()];
+    pinchDistance = Math.hypot(a.x - b.x, a.y - b.y);
+    spin.dragging = false;
+  }
+}
+
+function onViewPointerMove(e) {
+  if (!pointers.has(e.pointerId)) return;
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pointers.size === 2) {
+    const [a, b] = [...pointers.values()];
+    const d = Math.hypot(a.x - b.x, a.y - b.y);
+    if (pinchDistance && d) zoomBy(pinchDistance / d);
+    pinchDistance = d;
+    return;
+  }
+  if (!spin.dragging) return;
+  const dx = e.clientX - spin.lastX;
+  const dy = e.clientY - spin.lastY;
+  const now = performance.now();
+  const dt = Math.max(1, now - spin.lastT);
+  rotateView(dx, dy);
+  // smoothed velocity in pixels per 16 ms frame, for inertia after release
+  spin.vx = 0.6 * spin.vx + 0.4 * ((dx / dt) * 16);
+  spin.vy = 0.6 * spin.vy + 0.4 * ((dy / dt) * 16);
+  Object.assign(spin, { lastX: e.clientX, lastY: e.clientY, lastT: now });
+}
+
+function onViewPointerUp(e) {
+  pointers.delete(e.pointerId);
+  renderer.domElement.releasePointerCapture?.(e.pointerId);
+  if (pointers.size === 0) {
+    spin.dragging = false;
+    // a drag that ended while standing still must not keep spinning
+    if (performance.now() - spin.lastT > 80) {
+      spin.vx = 0;
+      spin.vy = 0;
+    }
+  }
+}
+
+function onViewWheel(e) {
+  e.preventDefault();
+  zoomBy(Math.exp(e.deltaY * 0.0006));
+}
+
 function loop() {
   raf = requestAnimationFrame(loop);
-  controls.update();
+  if (!spin.dragging && (Math.abs(spin.vx) > 0.02 || Math.abs(spin.vy) > 0.02)) {
+    rotateView(spin.vx, spin.vy);
+    spin.vx *= 0.92;
+    spin.vy *= 0.92;
+  }
   renderer.render(scene, camera);
 }
 
@@ -231,14 +325,14 @@ onMounted(() => {
   const fill = new THREE.DirectionalLight(0xffffff, 0.8);
   fill.position.set(-6, -3, -5);
   scene.add(fill);
-  controls = new OrbitControls(camera, renderer.domElement);
-  controls.enablePan = false;
-  controls.enableDamping = true;
-  controls.minDistance = 4;
-  controls.maxDistance = 14;
+  renderer.domElement.addEventListener('pointerdown', onViewPointerDown);
+  renderer.domElement.addEventListener('pointermove', onViewPointerMove);
+  renderer.domElement.addEventListener('pointerup', onViewPointerUp);
+  renderer.domElement.addEventListener('pointercancel', onViewPointerUp);
+  renderer.domElement.addEventListener('wheel', onViewWheel, { passive: false });
   renderer.domElement.addEventListener('pointerdown', onPointerDown);
   renderer.domElement.addEventListener('pointerup', onPointerUp);
-  // Capture phase on the host so we run before OrbitControls' own wheel zoom.
+  // Capture phase on the host so a wheel over a sticker turns a layer instead of zooming.
   host.value.addEventListener('wheel', onWheel, { capture: true, passive: false });
   build();
   resetView();
@@ -251,7 +345,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
   cancelAnimationFrame(raf);
   resizeObserver?.disconnect();
-  controls?.dispose();
   renderer?.dispose();
 });
 
