@@ -14,6 +14,7 @@ const props = defineProps({
   paintable: { type: Boolean, default: false },
   locked: { type: Boolean, default: false },
   drama: { type: Boolean, default: false },
+  rumble: { type: Number, default: 0 },
 });
 const emit = defineEmits(['paint', 'layerturn']);
 
@@ -64,6 +65,7 @@ function build() {
   spec.cubies.forEach((cubie) => {
     const g = new THREE.Group();
     g.position.set(cubie.pos[0] / 2, cubie.pos[1] / 2, cubie.pos[2] / 2);
+    g.userData.home = g.position.clone();
     g.add(new THREE.Mesh(bodyGeometry, bodyMaterial));
     cubie.slots.forEach((slot) => {
       const st = spec.stickers[slot];
@@ -221,6 +223,7 @@ function loop() {
     spin.vy *= 0.92;
   }
   updateDrama(performance.now());
+  applyRumble(performance.now());
   renderer.render(scene, camera);
 }
 
@@ -269,6 +272,200 @@ function animate(move, next, speed = 1) {
     requestAnimationFrame(tick);
   });
 }
+
+// --- Finale: rumble, explosion, re-forming ----------------------------------------
+let glowTexture = null;
+function glow() {
+  if (!glowTexture) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const g = c.getContext('2d');
+    const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.25, 'rgba(255,255,255,0.6)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 64, 64);
+    glowTexture = new THREE.CanvasTexture(c);
+  }
+  return glowTexture;
+}
+
+// While the countdown runs the cube shakes harder and harder.
+function applyRumble(now) {
+  if (!cubeGroup || animating) return;
+  const amp = props.rumble * 0.045;
+  if (amp > 0) {
+    const t = now / 1000;
+    cubeGroup.position.set(Math.sin(t * 61) * amp, Math.sin(t * 73 + 1) * amp, Math.sin(t * 53 + 2) * amp);
+    cubeGroup.rotation.z = Math.sin(t * 47) * amp * 0.25;
+  } else if (cubeGroup.position.lengthSq() > 0 || cubeGroup.rotation.z !== 0) {
+    cubeGroup.position.set(0, 0, 0);
+    cubeGroup.rotation.z = 0;
+  }
+}
+
+const easeOutBack = (t) => 1 + 2.70158 * (t - 1) ** 3 + 1.70158 * (t - 1) ** 2;
+
+// The cube blows apart: every cubie flies outwards on its own slightly random path while
+// sparks and a flash burst from the centre. The scene then goes quiet and the cube
+// re-forms piece by piece as if nothing had happened. Resolves when it is whole again.
+function explode() {
+  if (animating || !cubeGroup) return Promise.resolve();
+  animating = true;
+  cubeGroup.position.set(0, 0, 0);
+  cubeGroup.rotation.z = 0;
+  const rnd = (a, b) => a + Math.random() * (b - a);
+
+  // cubie fragments
+  const pieces = cubieGroups.map((g) => {
+    const dir = g.userData.home.clone();
+    if (dir.lengthSq() < 0.01) dir.set(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1));
+    dir.normalize().add(new THREE.Vector3(rnd(-0.4, 0.4), rnd(-0.4, 0.4), rnd(-0.4, 0.4))).normalize();
+    return {
+      g,
+      v: dir.multiplyScalar(rnd(3.2, 7.5)),
+      spin: new THREE.Vector3(rnd(-9, 9), rnd(-9, 9), rnd(-9, 9)),
+      vanish: rnd(1.7, 2.2),
+    };
+  });
+
+  // sparks: additive glowing points, each with its own delay, speed and lifetime
+  const COUNT = 520;
+  const pos = new Float32Array(COUNT * 3);
+  const col = new Float32Array(COUNT * 3);
+  const sparks = Array.from({ length: COUNT }, () => {
+    const d = new THREE.Vector3(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)).normalize();
+    return { p: new THREE.Vector3(), v: d.multiplyScalar(rnd(2.5, 11)), delay: rnd(0, 0.35), life: rnd(0.6, 1.7) };
+  });
+  const sparkGeometry = new THREE.BufferGeometry();
+  sparkGeometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  sparkGeometry.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const sparkMaterial = new THREE.PointsMaterial({
+    size: 0.26,
+    map: glow(),
+    vertexColors: true,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+  const points = new THREE.Points(sparkGeometry, sparkMaterial);
+  points.frustumCulled = false;
+  scene.add(points);
+
+  // flash
+  const flashMaterial = new THREE.SpriteMaterial({ map: glow(), color: 0xffe9b0, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false });
+  const flash = new THREE.Sprite(flashMaterial);
+  scene.add(flash);
+
+  const REFORM_AT = 3.0;
+  const reformDelay = pieces.map(({ g }) => g.userData.home.length() * 0.14 + rnd(0, 0.06));
+  const reformFrom = pieces.map(() => new THREE.Quaternion().setFromEuler(new THREE.Euler(rnd(-2, 2), rnd(-2, 2), rnd(-2, 2))));
+  let reformStarted = false;
+  const DONE_AT = REFORM_AT + 1.4;
+  const start = performance.now();
+  let last = start;
+
+  return new Promise((resolve) => {
+    const tick = (nowMs) => {
+      const t = (nowMs - start) / 1000;
+      const dt = Math.min(0.05, (nowMs - last) / 1000);
+      last = nowMs;
+
+      if (t < REFORM_AT) {
+        // fragments: drag + a little gravity, tumbling, shrinking away at the end
+        pieces.forEach((p) => {
+          if (t > p.vanish) {
+            p.g.visible = false;
+            return;
+          }
+          p.v.multiplyScalar(1 - 0.3 * dt);
+          p.v.y -= 2.2 * dt;
+          p.g.position.addScaledVector(p.v, dt);
+          p.g.rotation.x += p.spin.x * dt;
+          p.g.rotation.y += p.spin.y * dt;
+          p.g.rotation.z += p.spin.z * dt;
+          const shrink = Math.max(0, Math.min(1, (p.vanish - t) / 0.4));
+          p.g.scale.setScalar(shrink);
+        });
+        // sparks
+        sparks.forEach((s, i) => {
+          const age = t - s.delay;
+          if (age < 0 || age > s.life) {
+            col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = 0;
+            return;
+          }
+          s.v.multiplyScalar(1 - 0.9 * dt);
+          s.v.y -= 3.5 * dt;
+          s.p.addScaledVector(s.v, dt);
+          const u = age / s.life;
+          const fade = (1 - u) ** 1.4;
+          // white-yellow -> orange -> deep red
+          const r = 1 * fade;
+          const g = Math.max(0, 0.95 - 0.85 * u) * fade;
+          const b = Math.max(0, 0.55 - 0.55 * u * 1.6) * fade;
+          pos[i * 3] = s.p.x;
+          pos[i * 3 + 1] = s.p.y;
+          pos[i * 3 + 2] = s.p.z;
+          col[i * 3] = r;
+          col[i * 3 + 1] = g;
+          col[i * 3 + 2] = b;
+        });
+        sparkGeometry.attributes.position.needsUpdate = true;
+        sparkGeometry.attributes.color.needsUpdate = true;
+        // flash and a short, hard shake at the moment of the blast
+        const f = Math.min(1, t / 0.45);
+        flash.scale.setScalar(2 + 14 * f);
+        flashMaterial.opacity = (1 - f) ** 1.5;
+        const shake = t < 0.4 ? 0.14 * (1 - t / 0.4) : 0;
+        cubeGroup.position.set(rnd(-shake, shake), rnd(-shake, shake), rnd(-shake, shake));
+      } else {
+        if (!reformStarted) {
+          // quiet moment is over: everything is gone, set the pieces up to grow back
+          reformStarted = true;
+          scene.remove(points);
+          scene.remove(flash);
+          sparkGeometry.dispose();
+          sparkMaterial.dispose();
+          flashMaterial.dispose();
+          cubeGroup.position.set(0, 0, 0);
+          pieces.forEach(({ g }) => {
+            g.position.copy(g.userData.home);
+            g.scale.setScalar(0.0001);
+            g.visible = true;
+          });
+        }
+        const rt = t - REFORM_AT;
+        pieces.forEach(({ g }, i) => {
+          const u = Math.max(0, Math.min(1, (rt - reformDelay[i]) / 0.55));
+          const e = easeOutBack(u);
+          g.scale.setScalar(Math.max(0.0001, e));
+          g.quaternion.copy(reformFrom[i]).slerp(IDENTITY, Math.min(1, u * 1.15));
+        });
+      }
+
+      if (t < DONE_AT) {
+        requestAnimationFrame(tick);
+        return;
+      }
+      // exactly as before the blast
+      pieces.forEach(({ g }) => {
+        g.position.copy(g.userData.home);
+        g.rotation.set(0, 0, 0);
+        g.quaternion.identity();
+        g.scale.setScalar(1);
+        g.visible = true;
+      });
+      cubeGroup.position.set(0, 0, 0);
+      cubeGroup.rotation.z = 0;
+      recolor(props.state);
+      animating = false;
+      resolve();
+    };
+    requestAnimationFrame(tick);
+  });
+}
+const IDENTITY = new THREE.Quaternion();
 
 const raycaster = new THREE.Raycaster();
 function pickSticker(clientX, clientY) {
@@ -385,7 +582,7 @@ watch(
   },
 );
 
-defineExpose({ animate, resetView });
+defineExpose({ animate, resetView, explode });
 </script>
 
 <style scoped>

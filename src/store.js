@@ -19,6 +19,9 @@ export const store = reactive({
   speed: 1,
   playing: false, // the solution is being played automatically
   drama: localStorage.getItem('rubiks-solver.drama') === '1', // "Extra drama": slow camera swirl while playing
+  finale: localStorage.getItem('rubiks-solver.finale') === '1', // "Extra, extra drama": countdown + explosion at the end
+  countdown: 0, // 3, 2, 1 while the finale countdown runs, else 0
+  exploding: false, // the explosion / re-forming animation is running
   busy: false,
   solution: null, // result of solve()
   pointer: 0, // number of solution moves already performed
@@ -29,11 +32,16 @@ export const store = reactive({
 export const cubeState = shallowRef(solvedState(3));
 
 let animator = null;
+let exploder = null;
 let queue = Promise.resolve();
 const listeners = new Set();
 
 export function registerAnimator(fn) {
   animator = fn;
+}
+
+export function registerExploder(fn) {
+  exploder = fn;
 }
 
 export function onMove(fn) {
@@ -45,7 +53,35 @@ export const validity = computed(() => analyzeState(cubeState.value, store.n));
 export const solved = computed(() => isSolved(cubeState.value, store.n));
 export const stageProgress = computed(() => progress(cubeState.value, store.n));
 
+// "Extra, extra drama": 3-2-1, then the cube explodes and re-forms. Anything the user does
+// during the countdown (a move, a reset, a new position, rewinding ...) calls cancelFinale().
+let finaleToken = 0;
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export async function runFinale() {
+  const token = ++finaleToken;
+  for (const n of [3, 2, 1]) {
+    if (token !== finaleToken) return;
+    store.countdown = n;
+    await sleep(1000);
+  }
+  if (token !== finaleToken) return;
+  store.countdown = 0;
+  store.exploding = true;
+  try {
+    await exploder?.();
+  } finally {
+    store.exploding = false;
+  }
+}
+
+export function cancelFinale() {
+  finaleToken++;
+  store.countdown = 0;
+}
+
 function clearSolution() {
+  cancelFinale();
   store.solution = null;
   store.pointer = 0;
   store.solveError = '';
@@ -100,6 +136,7 @@ export function paint(slot, color = store.brush) {
 // faces that turn together (used for middle-slice turns). `fromSolution` keeps the
 // computed solution valid.
 export function turn(move, { animate = true, fromSolution = false } = {}) {
+  if (store.exploding) return queue; // the cube is in pieces
   queue = queue.then(async () => {
     const next = move.split(' ').reduce((s, m) => applyMove(s, store.n, m), cubeState.value);
     store.busy = true;
@@ -151,6 +188,7 @@ export function timeline() {
 }
 
 export async function stepForward() {
+  cancelFinale();
   const tl = timeline();
   if (store.pointer >= tl.length) return;
   const item = tl[store.pointer];
@@ -159,6 +197,7 @@ export async function stepForward() {
 }
 
 export async function stepBack() {
+  cancelFinale();
   const tl = timeline();
   if (store.pointer <= 0) return;
   store.pointer--;

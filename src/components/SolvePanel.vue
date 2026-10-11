@@ -36,6 +36,11 @@
         Extra drama
         <small>– slow, smooth camera rotation during playback</small>
       </label>
+      <label class="drama" title="When the cube is solved: 3-2-1, explosion, and the cube re-forms">
+        <input v-model="store.finale" type="checkbox" />
+        Extra, extra drama
+        <small>– 3-2-1 countdown, then the cube explodes (and re-forms)</small>
+      </label>
       <div class="bar"><div :style="{ width: `${(store.pointer / Math.max(1, total)) * 100}%` }"></div></div>
 
       <div v-if="current" class="now">
@@ -77,15 +82,22 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import TutorBox from './TutorBox.vue';
 import { lessonFor } from '../core/lessons.js';
-import { computeSolution, solved, stepBack, stepForward, store, timeline, validity } from '../store.js';
+import { cancelFinale, computeSolution, runFinale, solved, stepBack, stepForward, store, timeline, validity } from '../store.js';
 
 const solving = ref(false);
 const playing = ref(false);
-// the camera effect needs to know about playback, and the checkbox is remembered
+// the camera effect needs to know about playback, and the checkboxes are remembered
 watch(playing, (value) => (store.playing = value), { immediate: true });
 watch(
   () => store.drama,
   (on) => localStorage.setItem('rubiks-solver.drama', on ? '1' : '0'),
+);
+watch(
+  () => store.finale,
+  (on) => {
+    localStorage.setItem('rubiks-solver.finale', on ? '1' : '0');
+    if (!on) cancelFinale();
+  },
 );
 const sol = computed(() => store.solution);
 const total = computed(() => sol.value?.moves.length ?? 0);
@@ -126,7 +138,10 @@ async function solveNow() {
 async function play() {
   playing.value = true;
   while (playing.value && store.pointer < total.value) await stepForward();
+  // reached the end by itself (not paused, not rewound): the grand finale
+  const finishedByItself = playing.value && store.pointer >= total.value && solved.value;
   playing.value = false;
+  if (finishedByItself && store.finale) runFinale();
 }
 function togglePlay() {
   if (playing.value) playing.value = false;
@@ -149,6 +164,7 @@ async function rewind() {
 onBeforeUnmount(() => {
   playing.value = false;
   store.playing = false;
+  cancelFinale();
 });
 </script>
 

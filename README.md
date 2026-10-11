@@ -28,7 +28,7 @@ npm run build      # static site in dist/
 | Tab | What it does |
 | --- | --- |
 | **Set up** | 2×2 / 3×3, reset, random scramble, paint stickers (click in the 3D cube or the flat net), live validity check, import from two photos |
-| **Solve** | Finds a staged solution, plays it animated (play / step / back / speed) with an explanation of each stage and step. Tick **Extra drama** for a slow, smooth swirl of the camera around the cube while it plays (it eases in and out, stops when you pause and gives way if you grab the cube) |
+| **Solve** | Finds a staged solution, plays it animated (play / step / back / speed) with an explanation of each stage and step. Tick **Extra drama** for a slow, smooth swirl of the camera around the cube while it plays (it eases in and out, stops when you pause and gives way if you grab the cube). Tick **Extra, extra drama** for a finale: when the solution finishes playing, a 3-2-1 countdown (with a growing rumble) leads to an explosion – every small cube piece flies off in its own slightly random direction amid sparks and a flash – and then the cube re-forms, solved, as if nothing had happened. Any move, rewind or reset during the countdown cancels it. |
 | **Learn** | Notation, cube anatomy, the layer-by-layer method for the selected size, "Try" buttons for every algorithm |
 | **Practice** | Timed "solve it yourself" challenge with a live stage checklist and hints, plus a notation quiz |
 

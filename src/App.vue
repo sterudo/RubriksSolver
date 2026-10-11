@@ -17,8 +17,9 @@
             :n="store.n"
             :state="cubeState"
             :paintable="store.editing"
-            :locked="store.busy"
+            :locked="store.busy || store.exploding"
             :drama="store.drama && store.playing"
+            :rumble="store.countdown ? (4 - store.countdown) / 3 : 0"
             @paint="onPaint"
             @layerturn="(m) => turn(m)"
           />
@@ -26,6 +27,9 @@
             <button title="Reset camera" @click="cube?.resetView()">⟲ View</button>
             <span v-if="store.editing" class="badge">Painting: click stickers</span>
             <span v-else-if="solved" class="badge ok">Solved ✓</span>
+          </div>
+          <div v-if="store.countdown" :key="store.countdown" class="countdown" aria-live="assertive">
+            <span>{{ store.countdown }}</span>
           </div>
         </div>
         <MovePad />
@@ -57,7 +61,7 @@ import SaveLoad from './components/SaveLoad.vue';
 import SetupPanel from './components/SetupPanel.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import SolvePanel from './components/SolvePanel.vue';
-import { cubeState, paint, registerAnimator, solved, store, turn } from './store.js';
+import { cubeState, paint, registerAnimator, registerExploder, solved, store, turn } from './store.js';
 
 const tabs = [
   { id: 'setup', label: 'Set up' },
@@ -83,6 +87,7 @@ function onKey(e) {
 
 onMounted(() => {
   registerAnimator((move, next, speed) => cube.value.animate(move, next, speed));
+  registerExploder(() => cube.value.explode());
   window.addEventListener('keydown', onKey);
 });
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
