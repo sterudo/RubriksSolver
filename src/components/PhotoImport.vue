@@ -22,7 +22,7 @@
         ></canvas>
         <div class="ai-row">
           <button type="button" :disabled="!images[p - 1] || ai[p - 1].busy" @click="alignPhoto(p - 1)">
-            {{ ai[p - 1].busy ? 'Aligning…' : '✨ Align with AI' }}
+            {{ ai[p - 1].busy ? 'Finding the cube…' : '✨ Find the cube' }}
           </button>
           <span v-if="ai[p - 1].text" class="ai-msg" :class="ai[p - 1].state">{{ ai[p - 1].text }}</span>
         </div>
@@ -31,8 +31,8 @@
     <label class="wb">
       <input v-model="autoAlign" type="checkbox" />
       <span>
-        Align the outline automatically with AI after upload
-        <small>(local model first, Gemini as fallback – configure them in Settings)</small>
+        Outline the cube automatically after upload
+        <small>(fits a perspective-correct cube model to the photo; a local model or Gemini, if set up in Settings, helps to locate it)</small>
       </span>
     </label>
     <label class="wb">
@@ -79,7 +79,8 @@
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { aiSettings } from '../aiSettings.js';
 import { averageColor, defaultHandles, HUE_RANGE, samplePoints, stateFromSamples } from '../core/photo.js';
-import { alignWithAI, hexagonFromBox, refineBox } from '../core/vision.js';
+import { fitCubeAsync } from '../core/fitRunner.js';
+import { alignWithAI, hasAI, hexagonFromBox, refineBox } from '../core/vision.js';
 
 const props = defineProps({ n: Number });
 const emit = defineEmits(['import']);
@@ -144,6 +145,19 @@ function preparePhoto(img) {
   return { dataUrl: c.toDataURL('image/jpeg', 0.85), pixels: ctx.getImageData(0, 0, c.width, c.height) };
 }
 
+const MIN_FIT_SCORE = 0.3; // below this the model fit is not trusted
+
+function applyHandles(i, img, handlesNorm) {
+  const { s, ox, oy } = fit(img);
+  handlesNorm.forEach(([x, y], k) => {
+    handles[i][k] = [ox + (x / 1000) * img.width * s, oy + (y / 1000) * img.height * s];
+  });
+  draw(i);
+}
+
+// The cube is found by fitting a rigid, perspective-correct N x N cube model to the photo
+// (see core/cubefit.js). The AI is only a locator: its bounding box restricts the search,
+// and its box is the fallback when the model fit finds nothing convincing.
 async function alignPhoto(i) {
   const img = images[i];
   if (!img) return;
@@ -152,26 +166,56 @@ async function alignPhoto(i) {
   aiControllers[i] = controller;
   ai[i].busy = true;
   ai[i].state = '';
-  ai[i].text = 'Asking the AI to find the cube…';
+  ai[i].text = 'Analysing the photo…';
+  const stale = () => images[i] !== img || controller.signal.aborted;
   try {
     const { dataUrl, pixels } = preparePhoto(img);
-    const result = await alignWithAI({ ...aiSettings }, dataUrl, controller.signal);
-    if (images[i] !== img) return; // a newer photo replaced this one meanwhile
-    // Snap the AI's rough box to the real silhouette when the background allows it.
-    const refined = refineBox(pixels, result.box);
-    const handlesNorm = refined ? hexagonFromBox(refined) : result.handles;
-    const { s, ox, oy } = fit(img);
-    handlesNorm.forEach(([x, y], k) => {
-      handles[i][k] = [ox + (x / 1000) * img.width * s, oy + (y / 1000) * img.height * s];
-    });
-    const who = result.source === 'local' ? 'local model' : 'Gemini';
-    const fellBack = result.notes.length ? ` (${result.notes[0]})` : '';
-    ai[i].state = 'ok';
+    const useAI = hasAI(aiSettings);
+    const aiPromise = useAI
+      ? alignWithAI({ ...aiSettings }, dataUrl, controller.signal).catch((e) => {
+          if (e.kind === 'abort' || controller.signal.aborted) throw e;
+          return { error: e.message };
+        })
+      : null;
+    let best = await fitCubeAsync(pixels, props.n, { signal: controller.signal });
+    if (stale()) return;
+    let how = 'image analysis';
+    if (best && best.score >= MIN_FIT_SCORE) {
+      applyHandles(i, img, best.handles);
+      if (useAI) ai[i].text = 'Cube outlined by image analysis – asking the AI to double-check…';
+    }
+    let aiResult = null;
+    if (aiPromise) {
+      aiResult = await aiPromise;
+      if (stale()) return;
+      if (aiResult.box) {
+        const boxed = await fitCubeAsync(pixels, props.n, { box: aiResult.box, signal: controller.signal });
+        if (stale()) return;
+        if (boxed && (!best || boxed.score > best.score + 0.02)) {
+          best = boxed;
+          how = `${aiResult.source === 'local' ? 'local model' : 'Gemini'} ${aiResult.model} + image analysis`;
+        }
+      }
+    }
+    if (best && best.score >= MIN_FIT_SCORE) {
+      applyHandles(i, img, best.handles);
+      ai[i].state = 'ok';
+      ai[i].text =
+        `Cube outlined by ${how} (fit ${Math.round(best.score * 100)}%). ` +
+        'The outline is a perspective-correct cube model – fine-tune the handles if needed.';
+      return;
+    }
+    // no convincing model fit: use the AI's rough box when there is one
+    if (aiResult?.box) {
+      const refined = refineBox(pixels, aiResult.box);
+      applyHandles(i, img, refined ? hexagonFromBox(refined) : aiResult.handles);
+      ai[i].state = 'ok';
+      ai[i].text = 'The cube could not be fitted precisely; the outline is only a rough box from the AI – please adjust the handles.';
+      return;
+    }
+    ai[i].state = 'bad';
     ai[i].text =
-      `Aligned by ${who} ${result.model}${fellBack}` +
-      (refined ? ', snapped to the cube edges.' : ' (background too busy to snap to the edges).') +
-      ' The outline is a hexagon fitted to the cube – fine-tune the handles if needed.';
-    draw(i);
+      'Could not find a cube in this photo' + (aiResult?.error ? ` (${aiResult.error})` : '') + ' – drag the handles by hand.';
   } catch (e) {
     if (e.kind === 'abort' || controller.signal.aborted) return;
     ai[i].state = 'bad';

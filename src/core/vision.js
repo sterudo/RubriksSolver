@@ -1,9 +1,10 @@
-// AI-assisted alignment of the cube outline in a photo.
+// AI locator for the cube outline in a photo.
 //
-// Vision models are good at finding an object but poor at pointing to six precise
-// vertices, so the model is only asked for the cube's bounding box. The outline handles
-// are then derived from that box (a corner-on cube is a hexagon filling its box) and the
-// user can fine-tune them. The local model is tried first, Gemini is the fallback.
+// The outline itself comes from the model-based fit in cubefit.js. Vision models are good
+// at finding an object but poor at pointing to six precise vertices, so the model is only
+// asked for the cube's bounding box, which the fit uses as a search hint. As a last-resort
+// fallback the handles can still be derived from the box (a corner-on cube is a hexagon
+// filling its box). The local model is tried first, Gemini is the fallback.
 // Anything that does not look like a plausible cube box is rejected.
 
 import {
@@ -144,6 +145,10 @@ export function refineBox(image, box) {
   const touchesRegion = ex[0] === 0 || ey[0] === 0 || ex[1] === rw - 1 || ey[1] === rh - 1;
   if (ratio < 0.45 || ratio > 2.2 || shift > 0.25 * Math.max(box.x2 - box.x1, box.y2 - box.y1) || touchesRegion) return null;
   return refined;
+}
+
+export function hasAI(settings) {
+  return targetsFor(settings).length > 0;
 }
 
 function targetsFor(settings) {
