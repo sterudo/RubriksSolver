@@ -39,8 +39,10 @@ The **Save / load position** panel under the cube is available on every tab. You
 
 ### Enter a position from two photos
 1. Photo 1: look straight at a corner of the cube. Photo 2: flip the cube over "like a pancake" (about the photo's horizontal axis) so the opposite corner faces the camera.
-2. Drag the 7 handles on each photo until the outline follows the cube; the red dots show where colours are sampled.
-3. **Read colours**, then check/fix stickers in the net. (3×3: every sticker is matched to the nearest of the six centre colours. 2×2: the 24 colours are clustered.)
+2. When a photo is uploaded the outline is **aligned automatically with AI** (checkbox, on by default; **✨ Align with AI** re-runs it per photo). The **local model is tried first** (a vision-capable model on your OpenAI-compatible server, e.g. Gemma in LM Studio), and **Gemini is the fallback**; both are configured in **Settings**. The model only has to find the cube's bounding box – small models are unreliable at pointing to six exact vertices – and the app then snaps that box to the cube's real edges (comparing against the background colour) and derives the hexagon handles from it. If the background is too busy to snap, the AI box is used as is; if no model answers, the default outline stays and you place the handles yourself. Drag the 7 handles to fine-tune; the dots show where colours are read.
+3. Optionally tick **White balance**: if a white tile is found in a photo (the brightest, least coloured tile), it becomes that photo's white point and all of the photo's colours are corrected to it. This helps with warm/cool light and with two photos lit differently. If a photo has no white tile it is read as is, and the message says so.
+4. **Read colours**, then check/fix stickers in the net. (3×3: every sticker is matched to the nearest of the six centre colours. 2×2: the 24 colours are clustered.)
+5. Red, orange and yellow are the colours most often confused, so after reading, a **hue strip with two sliders** appears (*Red | Orange* and *Orange | Yellow*). The cutoffs start where they fall between the measured colours (3×3: between the red, orange and yellow centres; 2×2: at the two biggest gaps between the 12 warm stickers). Drag them to move stickers between the three colours; the cube updates live, and **Auto** restores the automatic values.
 
 ### Tutor / AI ("natural expression")
 The built-in tutor works offline. The **Settings** tab (also linked from the Tutor box) configures an AI provider; everything is saved automatically in the browser's `localStorage`:

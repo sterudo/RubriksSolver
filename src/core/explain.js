@@ -34,7 +34,7 @@ const SYSTEM =
   'You are a friendly Rubik\'s cube tutor. Explain in plain, encouraging language for a beginner, in at most 120 words. ' +
   'Use standard notation (R, U\', F2 ...) only where given. Never invent moves that are not in the provided data.';
 
-class ApiError extends Error {
+export class ApiError extends Error {
   constructor(kind, message, status = 0) {
     super(message);
     this.kind = kind; // 'network' | 'timeout' | 'http' | 'abort'
@@ -43,7 +43,7 @@ class ApiError extends Error {
 }
 
 // fetch wrapper: timeouts, readable errors, parsed JSON error bodies.
-async function request(url, { method = 'GET', headers = {}, body, signal, timeoutMs = 20000 } = {}) {
+export async function request(url, { method = 'GET', headers = {}, body, signal, timeoutMs = 20000 } = {}) {
   const controller = new AbortController();
   let timedOut = false;
   const timer = setTimeout(() => {
@@ -80,7 +80,7 @@ async function request(url, { method = 'GET', headers = {}, body, signal, timeou
   return data;
 }
 
-function explainGeminiError(e, model) {
+export function explainGeminiError(e, model) {
   if (e.kind === 'network' || e.kind === 'timeout') {
     return 'Cannot reach generativelanguage.googleapis.com – check your internet connection, proxy or ad-blocker.';
   }
@@ -93,7 +93,7 @@ function explainGeminiError(e, model) {
 
 // A failed fetch looks the same for "server down" and "server up but CORS blocks the reply".
 // A no-cors request succeeds (opaquely) whenever something is listening, so use it to tell them apart.
-async function describeLocalNetworkFailure(base) {
+export async function describeLocalNetworkFailure(base) {
   try {
     await fetch(`${base}/models`, { mode: 'no-cors', cache: 'no-store' });
   } catch {
@@ -105,14 +105,14 @@ async function describeLocalNetworkFailure(base) {
   );
 }
 
-function explainLocalError(e, base) {
+export function explainLocalError(e, base) {
   if (e.kind === 'timeout') return `${base} did not answer in time.`;
   if (e.status === 404) return `The server answered 404: ${e.message}. Check the model name, and that the base URL ends with /v1.`;
   return e.status ? `The server returned HTTP ${e.status}: ${e.message}` : e.message;
 }
 
-const geminiUrl = (model) => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}`;
-const localBase = (s) => s.localUrl.trim().replace(/\/+$/, '');
+export const geminiUrl = (model) => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}`;
+export const localBase = (s) => s.localUrl.trim().replace(/\/+$/, '');
 
 export async function askModel(settings, prompt, signal) {
   if (settings.provider === 'gemini') {

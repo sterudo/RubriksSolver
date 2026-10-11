@@ -98,30 +98,143 @@ export function rgbToLab([r, g, b]) {
 
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
-// colours: [{slot, lab}] for all stickers of both photos -> state (Uint8Array)
-export function classify(n, colors) {
+const toLinear = (c) => {
+  c /= 255;
+  return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+};
+const toSrgb = (l) => 255 * (l <= 0.0031308 ? 12.92 * l : 1.055 * l ** (1 / 2.4) - 0.055);
+const median = (xs) => {
+  const s = [...xs].sort((a, b) => a - b);
+  return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2;
+};
+
+// A white tile is bright and the least coloured tile in the photo. Returns its RGB (median
+// of the white-ish tiles, ignoring ones in shadow) or null when no tile looks white.
+export function findWhitePoint(rgbs) {
+  const chroma = (lab) => Math.hypot(lab[1], lab[2]);
+  const bright = rgbs.map((rgb) => ({ rgb, lab: rgbToLab(rgb) })).filter(({ lab }) => lab[0] > 60 && chroma(lab) < 50);
+  if (!bright.length) return null;
+  // Strong lighting tints white, but it stays far less colourful than any coloured tile.
+  const least = Math.min(...bright.map((c) => chroma(c.lab)));
+  const whiteish = bright.filter((c) => chroma(c.lab) <= least + 12);
+  const brightest = Math.max(...whiteish.map((c) => c.lab[0]));
+  const lit = whiteish.filter((c) => c.lab[0] >= brightest - 20);
+  return [0, 1, 2].map((ch) => median(lit.map((c) => c.rgb[ch])));
+}
+
+// Scale each channel (in linear light) so the white point becomes neutral white.
+export function applyWhitePoint(rgb, white) {
+  return rgb.map((c, ch) => {
+    const gain = Math.min(5, 1 / Math.max(toLinear(white[ch]), 0.02));
+    return Math.max(0, Math.min(255, toSrgb(Math.min(1, toLinear(c) * gain))));
+  });
+}
+
+// --- Hue helpers -----------------------------------------------------------------
+// Red, orange and yellow are the hard colours to tell apart: they are close in lightness
+// and chroma but sit at different hue angles. Hue (HSV degrees, with red wrapped to be
+// slightly negative so red < orange < yellow) is classified with adjustable cutoffs.
+
+export function rgbToHsv([r, g, b]) {
+  const [R, G, B] = [r / 255, g / 255, b / 255];
+  const max = Math.max(R, G, B);
+  const min = Math.min(R, G, B);
+  const d = max - min;
+  let h = 0;
+  if (d > 0) {
+    if (max === R) h = ((G - B) / d) % 6;
+    else if (max === G) h = (B - R) / d + 2;
+    else h = (R - G) / d + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  return { h: h > 300 ? h - 360 : h, s: max === 0 ? 0 : d / max, v: max };
+}
+
+export const HUE_RANGE = [-30, 90];
+const isWarm = (c) => c.s > 0.4 && c.h > -40 && c.h < 80;
+
+// Sorted warm hues -> two cutoffs at the two largest gaps (three groups: red, orange, yellow).
+function gapCutoffs(hues) {
+  const sorted = [...hues].sort((a, b) => a - b);
+  const gaps = sorted.slice(1).map((h, i) => ({ size: h - sorted[i], mid: (h + sorted[i]) / 2 }));
+  return gaps
+    .sort((a, b) => b.size - a.size)
+    .slice(0, 2)
+    .map((g) => g.mid)
+    .sort((a, b) => a - b);
+}
+
+const warmIndex = (hue, [c1, c2]) => (hue < c1 ? 0 : hue < c2 ? 1 : 2);
+
+// colours: [{slot, lab, h, s}] for all stickers of both photos -> state (Uint8Array).
+// `cutoffs` = [redOrange, orangeYellow] in hue degrees, or null to pick them automatically.
+// Result.hue is null when the red/orange/yellow split does not apply to this cube.
+export function classify(n, colors, cutoffs = null) {
   const spec = getSpec(n);
   const state = new Uint8Array(spec.slotCount);
   const warnings = [];
 
   if (n === 3) {
     const centres = [];
+    const centreColor = [];
     for (const c of colors) {
       const st = spec.stickers[c.slot];
-      if (spec.cubies[st.cubie].kind === 'center') centres[st.face] = c.lab;
+      if (spec.cubies[st.cubie].kind === 'center') {
+        centres[st.face] = c.lab;
+        centreColor[st.face] = c;
+      }
     }
     for (const c of colors) {
       let best = 0;
       for (let f = 1; f < 6; f++) if (dist(c.lab, centres[f]) < dist(c.lab, centres[best])) best = f;
       state[c.slot] = best;
     }
-    return { state, warnings };
+    const warmFaces = [0, 1, 2, 3, 4, 5].filter((f) => isWarm(centreColor[f])).sort((a, b) => centreColor[a].h - centreColor[b].h);
+    if (warmFaces.length !== 3) return { state, warnings, hue: null };
+    const hs = warmFaces.map((f) => centreColor[f].h);
+    const auto = [(hs[0] + hs[1]) / 2, (hs[1] + hs[2]) / 2];
+    const cut = cutoffs ?? auto;
+    const points = [];
+    for (const c of colors) {
+      if (!warmFaces.includes(state[c.slot]) || c.s < 0.25) continue;
+      state[c.slot] = warmFaces[warmIndex(c.h, cut)];
+      points.push(c.h);
+    }
+    return { state, warnings, hue: { auto, cutoffs: cut, points, anchors: hs } };
   }
 
-  // 2x2: balanced k-means into 6 clusters of exactly 4 stickers.
-  const labs = colors.map((c) => c.lab);
+  // 2x2: warm stickers are split by hue; the other 12 are clustered by colour.
+  const warm = colors.filter(isWarm);
+  let assign = null;
+  let hue = null;
+  if (warm.length === 12) {
+    const auto = gapCutoffs(warm.map((c) => c.h));
+    const cut = cutoffs ?? auto;
+    const rest = colors.filter((c) => !isWarm(c));
+    const restAssign = balancedKMeans(rest.map((c) => c.lab), 3);
+    assign = new Map();
+    warm.forEach((c) => assign.set(c.slot, 3 + warmIndex(c.h, cut)));
+    rest.forEach((c, i) => assign.set(c.slot, restAssign[i]));
+    hue = { auto, cutoffs: cut, points: warm.map((c) => c.h), anchors: [] };
+  } else {
+    const all = balancedKMeans(colors.map((c) => c.lab), 6);
+    assign = new Map(colors.map((c, i) => [c.slot, all[i]]));
+  }
+  for (const [slot, k] of assign) state[slot] = k;
+  const canon = canonical2x2(state);
+  if (canon.error) {
+    warnings.push(`${canon.error}. Check the result and correct stickers by hand.`);
+    return { state, warnings, hue };
+  }
+  return { state: canon.state, warnings, hue };
+}
+
+// k clusters of equal size over Lab colours (k-means with capacity-limited assignment).
+function balancedKMeans(labs, k) {
+  const size = labs.length / k;
   const centers = [labs[0]];
-  while (centers.length < 6) {
+  while (centers.length < k) {
     let far = 0;
     let farD = -1;
     labs.forEach((l, i) => {
@@ -136,34 +249,38 @@ export function classify(n, colors) {
   let assign = new Array(labs.length).fill(0);
   for (let iter = 0; iter < 25; iter++) {
     const pairs = [];
-    labs.forEach((l, i) => centers.forEach((c, k) => pairs.push([dist(l, c), i, k])));
+    labs.forEach((l, i) => centers.forEach((c, j) => pairs.push([dist(l, c), i, j])));
     pairs.sort((a, b) => a[0] - b[0]);
-    const cap = new Array(6).fill(4);
+    const cap = new Array(k).fill(size);
     const next = new Array(labs.length).fill(-1);
-    for (const [, i, k] of pairs) {
-      if (next[i] < 0 && cap[k] > 0) {
-        next[i] = k;
-        cap[k]--;
+    for (const [, i, j] of pairs) {
+      if (next[i] < 0 && cap[j] > 0) {
+        next[i] = j;
+        cap[j]--;
       }
     }
     assign = next;
-    for (let k = 0; k < 6; k++) {
-      const members = labs.filter((_, i) => assign[i] === k);
-      centers[k] = [0, 1, 2].map((d) => members.reduce((s, l) => s + l[d], 0) / members.length);
+    for (let j = 0; j < k; j++) {
+      const members = labs.filter((_, i) => assign[i] === j);
+      if (members.length) centers[j] = [0, 1, 2].map((d) => members.reduce((s, l) => s + l[d], 0) / members.length);
     }
   }
-  colors.forEach((c, i) => {
-    state[c.slot] = assign[i];
-  });
-  const canon = canonical2x2(state);
-  if (canon.error) {
-    warnings.push(`${canon.error}. Check the result and correct stickers by hand.`);
-    return { state, warnings };
-  }
-  return { state: canon.state, warnings };
+  return assign;
 }
 
-export function stateFromSamples(n, samples) {
-  const colors = samples.map((s) => ({ slot: s.slot, lab: rgbToLab(s.rgb) }));
-  return classify(n, colors);
+export function stateFromSamples(n, samples, { whiteBalance = false, cutoffs = null } = {}) {
+  const info = [null, null]; // per photo: 'applied' | 'no-white'
+  let used = samples;
+  if (whiteBalance) {
+    used = [];
+    for (const photo of [0, 1]) {
+      const group = samples.filter((s) => s.photo === photo);
+      const white = findWhitePoint(group.map((s) => s.rgb));
+      info[photo] = white ? 'applied' : 'no-white';
+      used.push(...(white ? group.map((s) => ({ ...s, rgb: applyWhitePoint(s.rgb, white) })) : group));
+    }
+  }
+  const colors = used.map((s) => ({ slot: s.slot, lab: rgbToLab(s.rgb), ...rgbToHsv(s.rgb) }));
+  return { ...classify(n, colors, cutoffs), whiteBalance: info };
 }
+
