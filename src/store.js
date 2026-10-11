@@ -17,6 +17,8 @@ export const store = reactive({
   editing: false,
   brush: 0,
   speed: 1,
+  playing: false, // the solution is being played automatically
+  drama: localStorage.getItem('rubiks-solver.drama') === '1', // "Extra drama": slow camera swirl while playing
   busy: false,
   solution: null, // result of solve()
   pointer: 0, // number of solution moves already performed

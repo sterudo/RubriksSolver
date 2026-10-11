@@ -13,6 +13,7 @@ const props = defineProps({
   state: { type: Object, required: true },
   paintable: { type: Boolean, default: false },
   locked: { type: Boolean, default: false },
+  drama: { type: Boolean, default: false },
 });
 const emit = defineEmits(['paint', 'layerturn']);
 
@@ -191,6 +192,27 @@ function onViewWheel(e) {
   zoomBy(Math.exp(e.deltaY * 0.0006));
 }
 
+// "Extra drama": a slow, smooth swirl as if the pointer were dragged round and round the
+// cube's centre. The drag direction turns steadily, so the view tumbles in a circle. The
+// effect eases in and out and gives way as soon as the user takes hold of the cube.
+const DRAMA_SPEED = 0.32; // radians of rotation per second
+const DRAMA_TURN = 0.55; // radians per second the drag direction revolves (~11 s per circle)
+const drama = { level: 0, phase: 0, last: 0 };
+
+function updateDrama(now) {
+  const dt = Math.min(0.1, (now - (drama.last || now)) / 1000);
+  drama.last = now;
+  const want = props.drama && !spin.dragging && pointers.size === 0 ? 1 : 0;
+  const step = dt * 0.7; // ~1.4 s to fade in or out
+  drama.level += Math.max(-step, Math.min(step, want - drama.level));
+  if (drama.level < 0.001) return;
+  drama.phase += dt * DRAMA_TURN;
+  const eased = drama.level * drama.level * (3 - 2 * drama.level);
+  const height = renderer.domElement.clientHeight || 1;
+  const px = ((DRAMA_SPEED * height) / (2 * Math.PI)) * dt * eased; // px of "drag" this frame
+  rotateView(Math.cos(drama.phase) * px, Math.sin(drama.phase) * px);
+}
+
 function loop() {
   raf = requestAnimationFrame(loop);
   if (!spin.dragging && (Math.abs(spin.vx) > 0.02 || Math.abs(spin.vy) > 0.02)) {
@@ -198,6 +220,7 @@ function loop() {
     spin.vx *= 0.92;
     spin.vy *= 0.92;
   }
+  updateDrama(performance.now());
   renderer.render(scene, camera);
 }
 

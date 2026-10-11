@@ -18,6 +18,7 @@
             :state="cubeState"
             :paintable="store.editing"
             :locked="store.busy"
+            :drama="store.drama && store.playing"
             @paint="onPaint"
             @layerturn="(m) => turn(m)"
           />

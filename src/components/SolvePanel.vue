@@ -31,6 +31,11 @@
           <input v-model.number="store.speed" type="range" min="0.5" max="4" step="0.5" />
         </label>
       </div>
+      <label class="drama" title="While playing, the camera slowly swirls around the cube">
+        <input v-model="store.drama" type="checkbox" />
+        Extra drama
+        <small>– slow, smooth camera rotation during playback</small>
+      </label>
       <div class="bar"><div :style="{ width: `${(store.pointer / Math.max(1, total)) * 100}%` }"></div></div>
 
       <div v-if="current" class="now">
@@ -69,13 +74,19 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import TutorBox from './TutorBox.vue';
 import { lessonFor } from '../core/lessons.js';
 import { computeSolution, solved, stepBack, stepForward, store, timeline, validity } from '../store.js';
 
 const solving = ref(false);
 const playing = ref(false);
+// the camera effect needs to know about playback, and the checkbox is remembered
+watch(playing, (value) => (store.playing = value), { immediate: true });
+watch(
+  () => store.drama,
+  (on) => localStorage.setItem('rubiks-solver.drama', on ? '1' : '0'),
+);
 const sol = computed(() => store.solution);
 const total = computed(() => sol.value?.moves.length ?? 0);
 const atEnd = computed(() => store.pointer >= total.value);
@@ -135,7 +146,10 @@ async function rewind() {
   store.speed = old;
 }
 
-onBeforeUnmount(() => (playing.value = false));
+onBeforeUnmount(() => {
+  playing.value = false;
+  store.playing = false;
+});
 </script>
 
 <style scoped>
@@ -158,6 +172,20 @@ onBeforeUnmount(() => (playing.value = false));
 }
 .speed input {
   width: 90px;
+}
+.drama {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.drama input {
+  padding: 0;
+}
+.drama small {
+  color: var(--muted);
 }
 .bar {
   height: 4px;
