@@ -4,20 +4,26 @@
 
 const STORAGE_KEY = 'rubiks-solver.ai';
 
+export const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.6-flash'];
+
 export const DEFAULT_SETTINGS = {
   provider: 'builtin', // 'builtin' | 'gemini' | 'local'
   geminiKey: '',
-  geminiModel: 'gemini-2.5-flash',
+  geminiModel: GEMINI_MODELS[0],
   localUrl: 'http://localhost:1234/v1',
   localModel: 'google/gemma-4-e4b',
 };
 
 export function loadSettings() {
+  let stored = {};
   try {
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') };
+    stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
   } catch {
-    return { ...DEFAULT_SETTINGS };
+    // corrupt entry: fall back to defaults
   }
+  const settings = { ...DEFAULT_SETTINGS, ...stored };
+  if (!GEMINI_MODELS.includes(settings.geminiModel)) settings.geminiModel = DEFAULT_SETTINGS.geminiModel;
+  return settings;
 }
 
 export function saveSettings(settings) {

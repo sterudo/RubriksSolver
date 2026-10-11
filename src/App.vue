@@ -38,6 +38,7 @@
         <SetupPanel v-if="store.mode === 'setup'" />
         <SolvePanel v-else-if="store.mode === 'solve'" />
         <LearnPanel v-else-if="store.mode === 'learn'" />
+        <SettingsPanel v-else-if="store.mode === 'settings'" />
         <PracticePanel v-else />
       </aside>
     </main>
@@ -51,6 +52,7 @@ import LearnPanel from './components/LearnPanel.vue';
 import MovePad from './components/MovePad.vue';
 import PracticePanel from './components/PracticePanel.vue';
 import SetupPanel from './components/SetupPanel.vue';
+import SettingsPanel from './components/SettingsPanel.vue';
 import SolvePanel from './components/SolvePanel.vue';
 import { cubeState, paint, registerAnimator, solved, store, turn } from './store.js';
 
@@ -59,6 +61,7 @@ const tabs = [
   { id: 'solve', label: 'Solve' },
   { id: 'learn', label: 'Learn' },
   { id: 'practice', label: 'Practice' },
+  { id: 'settings', label: 'Settings' },
 ];
 const cube = ref(null);
 

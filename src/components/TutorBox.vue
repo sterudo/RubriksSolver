@@ -3,40 +3,7 @@
     <div class="tutor-head">
       <h3>Tutor</h3>
       <span class="pill">{{ providerLabel }}</span>
-      <button class="link" @click="showSettings = !showSettings">{{ showSettings ? 'Close' : 'Settings' }}</button>
-    </div>
-
-    <div v-if="showSettings" class="settings">
-      <label>
-        Provider
-        <select v-model="settings.provider" @change="persist">
-          <option value="builtin">Built-in (no AI)</option>
-          <option value="gemini">Gemini API</option>
-          <option value="local">Local model (Gemma via LM Studio / Ollama)</option>
-        </select>
-      </label>
-      <template v-if="settings.provider === 'gemini'">
-        <label>
-          API key
-          <input v-model="settings.geminiKey" type="password" autocomplete="off" placeholder="AIza…" @change="persist" />
-        </label>
-        <label>
-          Model
-          <input v-model="settings.geminiModel" @change="persist" />
-        </label>
-        <p class="note">The key is stored only in this browser (localStorage) and sent directly to Google.</p>
-      </template>
-      <template v-if="settings.provider === 'local'">
-        <label>
-          OpenAI-compatible base URL
-          <input v-model="settings.localUrl" placeholder="http://localhost:1234/v1" @change="persist" />
-        </label>
-        <label>
-          Model name
-          <input v-model="settings.localModel" placeholder="google/gemma-4-e4b" @change="persist" />
-        </label>
-        <p class="note">Enable CORS in your local server so the browser may call it.</p>
-      </template>
+      <button class="link" @click="store.mode = 'settings'">Settings</button>
     </div>
 
     <p class="answer" :class="{ ai: answerIsAi }">{{ shown }}</p>
@@ -53,13 +20,13 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue';
-import { builtinAnswer, explain, loadSettings, saveSettings } from '../core/explain.js';
+import { computed, ref, watch } from 'vue';
+import { aiSettings as settings } from '../aiSettings.js';
+import { builtinAnswer, explain } from '../core/explain.js';
+import { store } from '../store.js';
 
 const props = defineProps({ context: { type: Object, required: true } });
 
-const settings = reactive(loadSettings());
-const showSettings = ref(false);
 const question = ref('');
 const loading = ref(false);
 const error = ref('');
@@ -78,10 +45,6 @@ watch(
     error.value = '';
   },
 );
-
-function persist() {
-  saveSettings({ ...settings });
-}
 
 async function ask(q) {
   loading.value = true;
