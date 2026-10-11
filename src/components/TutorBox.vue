@@ -55,9 +55,7 @@ async function ask(q) {
     answerIsAi.value = res.ai;
     question.value = '';
   } catch (e) {
-    error.value = e.message.includes('Failed to fetch')
-      ? 'Could not reach the model (network or CORS). Check the URL/key in Settings.'
-      : e.message;
+    error.value = e.message;
   } finally {
     loading.value = false;
   }

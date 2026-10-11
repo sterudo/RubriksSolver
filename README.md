@@ -42,7 +42,7 @@ Drag the cube to rotate it. Scroll the mouse wheel over a tile to turn the layer
 ### Tutor / AI ("natural expression")
 The built-in tutor works offline. The **Settings** tab (also linked from the Tutor box) configures an AI provider; everything is saved automatically in the browser's `localStorage`:
 - **Gemini API** – paste an API key (sent only to Google's Gemini API) and pick a model: `gemini-2.5-flash`, `gemini-3.1-flash-lite`, `gemini-3.5-flash-lite` or `gemini-3.6-flash`. **Test connection** checks the key and model.
-- **Local model** – any OpenAI-compatible server (LM Studio, Ollama, llama.cpp) running Gemma, e.g. `http://localhost:1234/v1`. Enable CORS on that server.
+- **Local model** – any OpenAI-compatible server (LM Studio, Ollama, llama.cpp) running Gemma, e.g. `http://localhost:1234/v1`. Browsers only accept replies from servers that allow CORS: in LM Studio turn on *Developer → Server Settings → Enable CORS*; for Ollama set `OLLAMA_ORIGINS=*`. **Test local model** tells a stopped server apart from one that is running but blocking the browser.
 
 "Explain" rewrites the current stage/step in natural language; "Ask" answers a free-form question about it.
 
