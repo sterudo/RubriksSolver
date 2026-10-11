@@ -48,7 +48,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
-import { invertMove, movesFor } from '../core/cube.js';
+import { invertAlg, movesFor } from '../core/cube.js';
 import { lessonFor } from '../core/lessons.js';
 import { solve } from '../core/solver.js';
 import { cubeState, onMove, scramble, solved, stageProgress, store, turn } from '../store.js';
@@ -148,7 +148,7 @@ function toggleQuiz() {
       quizFeedback.value = `That was ${move}; ${target.value} was asked. Look at which face turns and which way.`;
     }
     undoing = true;
-    await turn(invertMove(move));
+    await turn(invertAlg(move.split(' ')).join(' '));
     undoing = false;
     nextTarget();
   });

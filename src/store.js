@@ -89,10 +89,12 @@ export function paint(slot, color = store.brush) {
   clearSolution();
 }
 
-// Perform one move, animated. `fromSolution` keeps the computed solution valid.
+// Perform one move, animated. `move` may be several space-separated moves on opposite
+// faces that turn together (used for middle-slice turns). `fromSolution` keeps the
+// computed solution valid.
 export function turn(move, { animate = true, fromSolution = false } = {}) {
   queue = queue.then(async () => {
-    const next = applyMove(cubeState.value, store.n, move);
+    const next = move.split(' ').reduce((s, m) => applyMove(s, store.n, m), cubeState.value);
     store.busy = true;
     try {
       if (animate && animator) await animator(move, next, store.speed);

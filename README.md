@@ -32,7 +32,7 @@ npm run build      # static site in dist/
 | **Learn** | Notation, cube anatomy, the layer-by-layer method for the selected size, "Try" buttons for every algorithm |
 | **Practice** | Timed "solve it yourself" challenge with a live stage checklist and hints, plus a notation quiz |
 
-Drag the cube to rotate it. Keyboard: `R L U D F B` turn a face, `Shift` makes it counter-clockwise.
+Drag the cube to rotate it. Scroll the mouse wheel over a tile to turn the layer holding it so the tile moves up/down on screen (scroll down = down); hold `Alt` to move it left/right instead. Scrolling anywhere else zooms. Middle-slice turns are shown as the two outer layers turning the opposite way (same position, orientation kept). Keyboard: `R L U D F B` turn a face, `Shift` makes it counter-clockwise.
 
 ### Enter a position from two photos
 1. Photo 1: look straight at a corner of the cube. Photo 2: flip the cube over "like a pancake" (about the photo's horizontal axis) so the opposite corner faces the camera.

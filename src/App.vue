@@ -12,7 +12,15 @@
     <main>
       <div class="stage">
         <div class="viewport">
-          <CubeView ref="cube" :n="store.n" :state="cubeState" :paintable="store.editing" @paint="onPaint" />
+          <CubeView
+            ref="cube"
+            :n="store.n"
+            :state="cubeState"
+            :paintable="store.editing"
+            :locked="store.busy"
+            @paint="onPaint"
+            @layerturn="(m) => turn(m)"
+          />
           <div class="overlay">
             <button title="Reset camera" @click="cube?.resetView()">⟲ View</button>
             <span v-if="store.editing" class="badge">Painting: click stickers</span>
@@ -20,7 +28,10 @@
           </div>
         </div>
         <MovePad />
-        <p class="keys">Keys: R L U D F B – hold Shift for the counter-clockwise turn. Drag the cube to look around.</p>
+        <p class="keys">
+          Drag to look around · wheel over a tile moves it up/down (Alt+wheel: left/right) · wheel elsewhere zooms ·
+          keys R L U D F B (Shift = counter-clockwise).
+        </p>
       </div>
 
       <aside>

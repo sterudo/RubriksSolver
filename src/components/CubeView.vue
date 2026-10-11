@@ -13,8 +13,9 @@ const props = defineProps({
   n: { type: Number, required: true },
   state: { type: Object, required: true },
   paintable: { type: Boolean, default: false },
+  locked: { type: Boolean, default: false },
 });
-const emit = defineEmits(['paint']);
+const emit = defineEmits(['paint', 'layerturn']);
 
 const host = ref(null);
 let renderer;
@@ -108,32 +109,42 @@ function loop() {
 
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 
+// `move` may hold several space-separated moves on opposite faces; they turn together.
 function animate(move, next, speed = 1) {
   if (animating || speed >= 10) {
     recolor(next);
     return Promise.resolve();
   }
   animating = true;
-  const face = FACES.indexOf(move[0]);
-  const axis = new THREE.Vector3(...FACE_NORMALS[face]);
-  const quarters = move.endsWith('2') ? 2 : 1;
-  const angle = (move.endsWith("'") ? 1 : -1) * quarters * (Math.PI / 2);
-  const pivot = new THREE.Group();
-  const layer = spec.layerOf(face).map((i) => cubieGroups[i]);
-  cubeGroup.add(pivot);
-  layer.forEach((g) => pivot.add(g));
-  const duration = (quarters === 2 ? 420 : 280) / speed;
+  const jobs = move.split(' ').map((part) => {
+    const face = FACES.indexOf(part[0]);
+    const quarters = part.endsWith('2') ? 2 : 1;
+    const pivot = new THREE.Group();
+    const layer = spec.layerOf(face).map((i) => cubieGroups[i]);
+    cubeGroup.add(pivot);
+    layer.forEach((g) => pivot.add(g));
+    return {
+      pivot,
+      layer,
+      quarters,
+      axis: new THREE.Vector3(...FACE_NORMALS[face]),
+      angle: (part.endsWith("'") ? 1 : -1) * quarters * (Math.PI / 2),
+    };
+  });
+  const duration = (jobs.some((j) => j.quarters === 2) ? 420 : 280) / speed;
   const start = performance.now();
   return new Promise((resolve) => {
     const tick = (now) => {
       const t = Math.min(1, (now - start) / duration);
-      pivot.setRotationFromAxisAngle(axis, angle * ease(t));
+      jobs.forEach((j) => j.pivot.setRotationFromAxisAngle(j.axis, j.angle * ease(t)));
       if (t < 1) {
         requestAnimationFrame(tick);
         return;
       }
-      layer.forEach((g) => cubeGroup.add(g));
-      cubeGroup.remove(pivot);
+      jobs.forEach((j) => {
+        j.layer.forEach((g) => cubeGroup.add(g));
+        cubeGroup.remove(j.pivot);
+      });
       recolor(next);
       animating = false;
       resolve();
@@ -142,9 +153,16 @@ function animate(move, next, speed = 1) {
   });
 }
 
+const raycaster = new THREE.Raycaster();
+function pickSticker(clientX, clientY) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  const ndc = new THREE.Vector2(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+  raycaster.setFromCamera(ndc, camera);
+  return raycaster.intersectObjects(stickerMeshes, false)[0];
+}
+
 // Click (not drag) on a sticker while painting.
 let downAt = null;
-const raycaster = new THREE.Raycaster();
 function onPointerDown(e) {
   downAt = { x: e.clientX, y: e.clientY };
 }
@@ -153,11 +171,51 @@ function onPointerUp(e) {
   const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y);
   downAt = null;
   if (moved > 5) return;
-  const rect = renderer.domElement.getBoundingClientRect();
-  const ndc = new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
-  raycaster.setFromCamera(ndc, camera);
-  const hit = raycaster.intersectObjects(stickerMeshes, false)[0];
+  const hit = pickSticker(e.clientX, e.clientY);
   if (hit) emit('paint', hit.object.userData.slot);
+}
+
+// Wheel over a sticker turns the layer holding it: the sticker moves up/down on screen,
+// or left/right with Alt. Scrolling down = down / right. Elsewhere the wheel zooms.
+const LAYER_LETTERS = [['L', 'R'], ['D', 'U'], ['B', 'F']];
+let wheelAccum = 0;
+
+function layerMoveForWheel(slot, dir, horizontal) {
+  const st = spec.stickers[slot];
+  const a = st.normal.findIndex((v) => v !== 0);
+  const axes = [0, 1, 2].filter((k) => k !== a);
+  camera.updateMatrixWorld();
+  const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
+  const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
+  // Turning about the axis most aligned with the screen's horizontal moves stickers vertically.
+  const vertAxis = Math.abs(right.getComponent(axes[0])) >= Math.abs(right.getComponent(axes[1])) ? axes[0] : axes[1];
+  const k = horizontal ? axes.find((x) => x !== vertAxis) : vertAxis;
+  const axis = new THREE.Vector3();
+  axis.setComponent(k, 1);
+  const p = new THREE.Vector3(...st.pos).multiplyScalar(0.5).add(new THREE.Vector3(...st.normal).multiplyScalar(0.5));
+  const velocity = axis.clone().cross(p); // direction of motion for a positive turn about +axis
+  const towardsWanted = horizontal ? velocity.dot(right) : -velocity.dot(up);
+  const sigma = (towardsWanted >= 0 ? 1 : -1) * dir; // +1 = counter-clockwise seen from +axis
+  const c = spec.cubies[st.cubie].pos[k];
+  const [neg, pos] = LAYER_LETTERS[k];
+  if (c === spec.m) return pos + (sigma > 0 ? "'" : '');
+  if (c === -spec.m) return neg + (sigma > 0 ? '' : "'");
+  // Middle slice: the two outer layers turn the opposite way (same pattern, orientation kept).
+  return `${pos}${sigma > 0 ? '' : "'"} ${neg}${sigma > 0 ? "'" : ''}`;
+}
+
+function onWheel(e) {
+  if (props.paintable) return;
+  const hit = pickSticker(e.clientX, e.clientY);
+  if (!hit) return;
+  e.preventDefault();
+  e.stopPropagation();
+  if (props.locked || animating) return;
+  wheelAccum += e.deltaY || e.deltaX;
+  if (Math.abs(wheelAccum) < 40) return;
+  const dir = Math.sign(wheelAccum);
+  wheelAccum = 0;
+  emit('layerturn', layerMoveForWheel(hit.object.userData.slot, dir, e.altKey));
 }
 
 onMounted(() => {
@@ -180,6 +238,8 @@ onMounted(() => {
   controls.maxDistance = 14;
   renderer.domElement.addEventListener('pointerdown', onPointerDown);
   renderer.domElement.addEventListener('pointerup', onPointerUp);
+  // Capture phase on the host so we run before OrbitControls' own wheel zoom.
+  host.value.addEventListener('wheel', onWheel, { capture: true, passive: false });
   build();
   resetView();
   resize();
