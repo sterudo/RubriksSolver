@@ -28,6 +28,7 @@
           </div>
         </div>
         <MovePad />
+        <SaveLoad />
         <p class="keys">
           Drag to look around · wheel over a tile moves it up/down (Alt+wheel: left/right) · wheel elsewhere zooms ·
           keys R L U D F B (Shift = counter-clockwise).
@@ -51,6 +52,7 @@ import CubeView from './components/CubeView.vue';
 import LearnPanel from './components/LearnPanel.vue';
 import MovePad from './components/MovePad.vue';
 import PracticePanel from './components/PracticePanel.vue';
+import SaveLoad from './components/SaveLoad.vue';
 import SetupPanel from './components/SetupPanel.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import SolvePanel from './components/SolvePanel.vue';

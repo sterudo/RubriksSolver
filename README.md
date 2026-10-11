@@ -34,6 +34,9 @@ npm run build      # static site in dist/
 
 Drag the cube to rotate it. Scroll the mouse wheel over a tile to turn the layer holding it so the tile moves up/down on screen (scroll down = down); hold `Alt` to move it left/right instead. Scrolling anywhere else zooms. Middle-slice turns are shown as the two outer layers turning the opposite way (same position, orientation kept). Keyboard: `R L U D F B` turn a face, `Shift` makes it counter-clockwise.
 
+### Save and load positions
+The **Save / load position** panel under the cube is available on every tab. You can save the current position under a name (kept in the browser's `localStorage`, loadable at any time even across 2×2/3×3), export it to a `.cube.json` file and import it again, or copy/paste it as a plain code. The code is the standard facelet string in the order U R F D L B (54 letters for a 3×3, 24 for a 2×2), e.g. a solved 3×3 is `UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB`.
+
 ### Enter a position from two photos
 1. Photo 1: look straight at a corner of the cube. Photo 2: flip the cube over "like a pancake" (about the photo's horizontal axis) so the opposite corner faces the camera.
 2. Drag the 7 handles on each photo until the outline follows the cube; the red dots show where colours are sampled.
@@ -64,6 +67,7 @@ src/core/cube.js      sticker/slot model, moves, notation, validation (parity, t
 src/core/solver.js    staged solver + progress checks
 src/core/lessons.js   teaching texts and algorithm library
 src/core/photo.js     two-photo geometry and colour classification
+src/core/saves.js     save/load: facelet string, file export/import, saved list
 src/core/explain.js   built-in / Gemini / local-model tutor
 src/components/       CubeView (three.js), NetEditor, PhotoImport, panels
 tests/                vitest suites

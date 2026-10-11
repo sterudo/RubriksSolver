@@ -59,9 +59,10 @@ export function setPosition(state) {
   return queue;
 }
 
-export function setSize(n) {
+// Replace the position and (if needed) the cube size in one step.
+export function loadPosition(n, state) {
   queue = queue.then(() => {
-    cubeState.value = solvedState(n);
+    cubeState.value = state;
     store.n = n;
     store.editing = false;
     store.brush = 0;
@@ -69,6 +70,10 @@ export function setSize(n) {
     store.moveCount = 0;
   });
   return queue;
+}
+
+export function setSize(n) {
+  return loadPosition(n, solvedState(n));
 }
 
 export function reset() {
