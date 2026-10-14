@@ -69,6 +69,7 @@
     </fieldset>
     <p class="note">Saved ✓ — settings are stored automatically.</p>
   </section>
+  <GamepadSettings />
 </template>
 
 <script setup>
@@ -76,6 +77,7 @@ import { reactive, ref, watch } from 'vue';
 import { aiSettings } from '../aiSettings.js';
 import { GEMINI_MODELS, testGemini, testLocal } from '../core/explain.js';
 import TestResult from './TestResult.vue';
+import GamepadSettings from './GamepadSettings.vue';
 
 const showKey = ref(false);
 const gemini = reactive({ busy: false, result: null });

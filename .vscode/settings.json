@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^Get-ChildItem -Force \\| Select-Object Name; node -v; npm -v; git --no-pager log --oneline -5$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

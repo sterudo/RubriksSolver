@@ -37,6 +37,46 @@ Drag the cube to rotate it freely in every direction – there is no limit horiz
 ### Save and load positions
 The **Save / load position** panel under the cube is available on every tab. You can save the current position under a name (kept in the browser's `localStorage`, loadable at any time even across 2×2/3×3), export it to a `.cube.json` file and import it again, or copy/paste it as a plain code. The code is the standard facelet string in the order U R F D L B (54 letters for a 3×3, 24 for a 2×2), e.g. a solved 3×3 is `UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB`.
 
+### Gamepad controls
+In **Settings**, enable gamepad controls and press a button on an Xbox/XInput-style controller.
+The browser Gamepad API must expose it with `standard` mapping; use HTTPS or localhost.
+All standard inputs are supported: LT/RT, LB/RB, both sticks' four directions and clicks,
+D-pad, A/B/X/Y, Menu/Start and View/Back (not the Xbox/Guide button).
+Choose a controller when several are connected.
+
+The bundled `src/gamepad-standard.json` maps RS to camera rotation, D-pad up/down to zoom,
+LS up/down to left-face counter-clockwise/clockwise and LS right/left to front-face turns.
+Hold RT to select right/back instead; hold LT for double turns (including LT+RT for right/back).
+LB/RB turn top/bottom clockwise, with LT for counter-clockwise. Y/X double-turn top/bottom.
+A performs the next solution move, computing a solution first if necessary; B undoes a manual
+turn or steps backward through a solution. Menu starts Quick Solve; View+X scrambles and
+View+Y resets to solved. Gamepad Quick Solve does not request fullscreen because browsers
+may require a mouse gesture; use the mouse Quick Solve button for fullscreen.
+
+Face actions follow the camera: front is the face most toward the viewer, right is the
+remaining perpendicular face most toward screen-right, and top completes that cube frame.
+Ties use fixed face order U/R/F/D/L/B. Clockwise/unprimed and counter-clockwise/prime are
+viewed from outside the selected face; double turns are 180 degrees. Camera rotation moves
+the view, not the cube's stored position.
+
+Click a binding in the action table, release all controls, hold modifiers, and press the
+main input last. Release and click **Confirm**, or **Cancel**. **Clear** unbinds an action.
+Longer combinations suppress their shorter subsets; duplicate combinations cannot be saved.
+Stick dead zone and trigger threshold are configurable. Camera/zoom repeat smoothly while
+held; other actions occur once per main-input press. Release and press again to change a
+modifier on a held main input. Input pauses during binding capture, text entry, and loss of
+page focus; release all controls after reconnecting, switching profiles, or returning to
+the page. Cube commands are ignored during animation, solving, playback, or sticker painting.
+Undo does not restore scrambles, resets, painting, or imported positions.
+
+Draft changes take effect immediately. **Save / Rename** updates the selected profile;
+**Save As** creates a new uniquely named profile. Profiles and the selected profile are
+stored as JSON in `localStorage` under `rubiks-solver.gamepad.v1`. **Restore default**
+loads the bundled bindings into the draft. JSON file export/import and copy/paste are
+available; import is validated and requires Save or Save As to persist.
+To ship your own initial layout, export a profile and replace `src/gamepad-standard.json`.
+Existing saved profiles remain unchanged. Browser storage is per origin and does not sync.
+
 ### Enter a position from two photos
 1. Photo 1: look straight at a corner of the cube. Photo 2: flip the cube over "like a pancake" (about the photo's horizontal axis) so the opposite corner faces the camera.
 2. When a photo is uploaded the cube **outline is found automatically** (checkbox, on by default; **✨ Find the cube** re-runs it per photo). This is not an AI guess of six vertices (small models are unreliable at that) but a **model-based fit**: the cube is treated as a rigid object with equal edges and the known N×N grid, seen through a pinhole camera (position, distance, 3D rotation and focal length are the unknowns), so converging, skewed edges are explained by perspective. The fit searches every orientation and rewards poses whose sticker centres land on coloured/white patches, whose grid lines fall on the black gaps (with a sticker on both sides) and whose faces end in a dark rim – i.e. it works from the stickers and gaps outward, rejects wrong grid sizes, and penalises coloured pixels the outline leaves unexplained. A final step lets the 7 handles deviate slightly to absorb lens distortion. It runs in a web worker (a few seconds). A **local model** (e.g. Gemma in LM Studio) or **Gemini**, when configured in **Settings**, is only used as a locator: it returns the cube's bounding box, the fit is repeated inside that box, and the better of the two fits is kept. If no convincing fit is found, the AI box (or the default outline) is used and you place the handles yourself. Drag the 7 handles to fine-tune; the dots show where colours are read.

@@ -27,6 +27,7 @@ export const store = reactive({
   countdown: 0, // 3, 2, 1 while the finale countdown runs, else 0
   exploding: false, // the explosion / re-forming animation is running
   busy: false,
+  solving: false,
   solution: null, // result of solve()
   pointer: 0, // number of solution moves already performed
   solveError: '',
@@ -39,6 +40,7 @@ let animator = null;
 let exploder = null;
 let queue = Promise.resolve();
 const listeners = new Set();
+const manualHistory = [];
 
 export function registerAnimator(fn) {
   animator = fn;
@@ -94,6 +96,7 @@ function clearSolution() {
 // Replace the whole position (reset, scramble, painting, photo import).
 export function setPosition(state) {
   queue = queue.then(() => {
+    manualHistory.length = 0;
     cubeState.value = state;
     clearSolution();
     store.moveCount = 0;
@@ -104,6 +107,7 @@ export function setPosition(state) {
 // Replace the position and (if needed) the cube size in one step.
 export function loadPosition(n, state) {
   queue = queue.then(() => {
+    manualHistory.length = 0;
     cubeState.value = state;
     store.n = n;
     store.editing = false;
@@ -133,13 +137,14 @@ export function paint(slot, color = store.brush) {
   const next = Uint8Array.from(cubeState.value);
   next[slot] = color;
   cubeState.value = next;
+  manualHistory.length = 0;
   clearSolution();
 }
 
 // Perform one move, animated. `move` may be several space-separated moves on opposite
 // faces that turn together (used for middle-slice turns). `fromSolution` keeps the
 // computed solution valid.
-export function turn(move, { animate = true, fromSolution = false } = {}) {
+export function turn(move, { animate = true, fromSolution = false, recordHistory = true } = {}) {
   if (store.exploding) return queue; // the cube is in pieces
   queue = queue.then(async () => {
     const next = move.split(' ').reduce((s, m) => applyMove(s, store.n, m), cubeState.value);
@@ -152,7 +157,8 @@ export function turn(move, { animate = true, fromSolution = false } = {}) {
     cubeState.value = next;
     if (!fromSolution) {
       clearSolution();
-      store.moveCount++;
+      store.moveCount = Math.max(0, store.moveCount + (recordHistory ? 1 : -1));
+      if (recordHistory) manualHistory.push(move);
     }
     listeners.forEach((fn) => fn(move));
   });
@@ -165,18 +171,35 @@ export function turns(moves, opts) {
 }
 
 export async function computeSolution() {
+  if (store.solving) return null;
+  store.solving = true;
   store.solveError = '';
-  // Let the "Solving…" state paint before the (synchronous) search runs.
-  await new Promise((r) => setTimeout(r, 20));
-  const result = solve(cubeState.value, store.n);
-  if (!result.ok) {
-    store.solution = null;
-    store.solveError = result.error;
-    return null;
+  try {
+    // Let the "Solving…" state paint before the (synchronous) search runs.
+    await new Promise((r) => setTimeout(r, 20));
+    const result = solve(cubeState.value, store.n);
+    if (!result.ok) {
+      store.solution = null;
+      store.solveError = result.error;
+      return null;
+    }
+    store.solution = result;
+    store.pointer = 0;
+    manualHistory.length = 0;
+    return result;
+  } finally {
+    store.solving = false;
   }
-  store.solution = result;
-  store.pointer = 0;
-  return result;
+}
+
+export async function undo() {
+  if (store.busy || store.playing || store.solving || store.exploding) return;
+  if (store.solution) return stepBack();
+  const move = manualHistory[manualHistory.length - 1];
+  if (!move) return;
+  const inverse = move.split(' ').reverse().map(invertMove).join(' ');
+  await turn(inverse, { recordHistory: false });
+  manualHistory.pop();
 }
 
 export function timeline() {

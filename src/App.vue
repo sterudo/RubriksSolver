@@ -9,7 +9,7 @@
           {{ t.label }}
         </button>
       </nav>
-      <button class="quick-solve" :disabled="!canQuickSolve" title="Fullscreen, full drama, solve and play" @click="quickSolve">
+      <button class="quick-solve" :disabled="!canQuickSolve" title="Fullscreen, full drama, solve and play" @click="quickSolve()">
         ⚡ Quick Solve
       </button>
     </header>
@@ -62,6 +62,12 @@
         </p>  
         <MovePad />
         <SaveLoad />
+        <p v-if="gamepad.connected" class="note">
+          Gamepad: {{ gamepad.enabled ? gamepad.draft.name : 'disabled' }}
+          <button @click="store.mode = 'settings'">Configure</button>
+        </p>
+        <p v-if="gamepad.error" class="status bad" role="alert">{{ gamepad.error }}</p>
+        <p v-if="gamepad.message && gamepad.connected" class="note" role="status">{{ gamepad.message }}</p>
         
       </div>
 
@@ -97,8 +103,11 @@ import SaveLoad from './components/SaveLoad.vue';
 import SetupPanel from './components/SetupPanel.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import SolvePanel from './components/SolvePanel.vue';
-import { cubeState, paint, registerAnimator, registerExploder, solved, store, turn, validity } from './store.js';
+import { computeSolution, cubeState, paint, registerAnimator, registerExploder, reset, scramble,
+  solved, stepForward, store, turn, undo, validity } from './store.js';
 import { FACE_COLOR_HEX } from './core/cube.js';
+import { CONTINUOUS_ACTIONS } from './core/gamepad.js';
+import { gamepad, startGamepad } from './gamepad.js';
 
 const tabs = [
   { id: 'setup', label: 'Set up' },
@@ -152,21 +161,60 @@ function startDividerDrag(e) {
 }
 
 const canQuickSolve = computed(
-  () => validity.value.ok && !store.playing && !store.busy && !store.exploding && !store.countdown,
+  () => validity.value.ok && !store.playing && !store.busy && !store.solving && !store.exploding && !store.countdown,
 );
 
-function quickSolve() {
+function quickSolve(fullscreen = true) {
   if (!canQuickSolve.value) return;
   store.editing = false;
   store.drama = true;
   store.finale = true;
   store.speed = 0.5;
   store.dramaSpeed = 1.2;
-  store.fullscreenOnPlay = true;
+  store.fullscreenOnPlay = fullscreen;
   // must run inside the click handler to count as a user gesture
-  viewport.value?.requestFullscreen?.().catch(() => {});
+  if (fullscreen) viewport.value?.requestFullscreen?.().catch(() => {});
   store.mode = 'solve';
   store.quickSolveRequest = true;
+}
+
+let stopGamepad;
+let gamepadPending = false;
+async function onGamepadAction(action, dt) {
+  if (CONTINUOUS_ACTIONS.has(action)) {
+    if (!store.exploding) cube.value?.gamepadView(action, dt);
+    return;
+  }
+  if (gamepadPending || store.busy || store.playing || store.solving || store.exploding || store.editing
+    || store.quickSolveRequest) return;
+  gamepadPending = true;
+  try {
+    if (action === 'quick-solve') {
+      if (canQuickSolve.value) {
+        quickSolve(false);
+        gamepad.message = 'Quick Solve started. For fullscreen, use the mouse Quick Solve button.';
+      } else gamepad.error = 'Quick Solve requires a valid cube position.';
+    } else if (action === 'next-step') {
+      if (!validity.value.ok) { gamepad.error = 'Cannot solve this cube: check the position in Set up.'; return; }
+      if (!store.solution) {
+        const result = await computeSolution();
+        if (!result) { gamepad.error = store.solveError || 'Could not compute a solution.'; return; }
+      }
+      store.mode = 'solve';
+      await stepForward();
+    } else if (action === 'undo') await undo();
+    else if (action === 'scramble') await scramble();
+    else if (action === 'reset') await reset();
+    else {
+      const [face, direction] = action.split('-');
+      const suffix = direction === 'ccw' ? "'" : direction === 'double' ? '2' : '';
+      await turn(cube.value.viewRelativeMove(face, suffix));
+    }
+  } catch (e) {
+    gamepad.error = `Gamepad action failed: ${e.message}`;
+  } finally {
+    gamepadPending = false;
+  }
 }
 
 function startResize(e) {
@@ -200,6 +248,7 @@ onMounted(() => {
   registerAnimator((move, next, speed) => cube.value.animate(move, next, speed));
   registerExploder(() => cube.value.explode());
   window.addEventListener('keydown', onKey);
+  stopGamepad = startGamepad(onGamepadAction);
 
   document.addEventListener('fullscreenchange', () => {
     isFullscreen.value = !!document.fullscreenElement;
@@ -208,7 +257,10 @@ onMounted(() => {
 });
 
 
-onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKey);
+  stopGamepad?.();
+});
 
 // Watch for starting play to auto-enter fullscreen when enabled
 watch(

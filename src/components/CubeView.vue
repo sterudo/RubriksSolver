@@ -7,6 +7,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { FACE_COLOR_HEX, FACE_NORMALS, FACES, getSpec } from '../core/cube.js';
+import { relativeFaces } from '../core/gamepad.js';
 
 const props = defineProps({
   n: { type: Number, required: true },
@@ -202,11 +203,12 @@ function onViewWheel(e) {
 // effect eases in and out and gives way as soon as the user takes hold of the cube.
 const DRAMA_TURN = 0.55; // radians per second the drag direction revolves (~11 s per circle)
 const drama = { level: 0, phase: 0, last: 0 };
+let gamepadViewUntil = 0;
 
 function updateDrama(now) {
   const dt = Math.min(0.1, (now - (drama.last || now)) / 1000);
   drama.last = now;
-  const want = props.drama && !spin.dragging && pointers.size === 0 ? 1 : 0;
+  const want = props.drama && !spin.dragging && pointers.size === 0 && now >= gamepadViewUntil ? 1 : 0;
   const step = dt * 0.7; // ~1.4 s to fade in or out
   drama.level += Math.max(-step, Math.min(step, want - drama.level));
   if (drama.level < 0.001) return;
@@ -708,7 +710,28 @@ watch(
 );
 watch(() => [props.hoverColors, props.paintable, props.locked], refreshHover);
 
-defineExpose({ animate, resetView, explode });
+function gamepadView(action, dt) {
+  if (!camera || !renderer) return;
+  gamepadViewUntil = performance.now() + 100;
+  spin.vx = 0;
+  spin.vy = 0;
+  if (action === 'zoom-in' || action === 'zoom-out') {
+    zoomBy(Math.exp((action === 'zoom-in' ? -1 : 1) * dt));
+  } else {
+    const pixels = renderer.domElement.clientHeight * dt / 6;
+    rotateView(action === 'cube-left' ? -pixels : action === 'cube-right' ? pixels : 0,
+      action === 'cube-up' ? -pixels : action === 'cube-down' ? pixels : 0);
+  }
+}
+
+function viewRelativeMove(face, suffix) {
+  camera.updateMatrixWorld();
+  const eye = camera.position.clone().sub(target).normalize().toArray();
+  const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0).toArray();
+  return relativeFaces(eye, right)[face] + suffix;
+}
+
+defineExpose({ animate, resetView, explode, gamepadView, viewRelativeMove });
 </script>
 
 <style scoped>
