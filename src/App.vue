@@ -7,9 +7,12 @@
           {{ t.label }}
         </button>
       </nav>
+      <button class="quick-solve" :disabled="!canQuickSolve" title="Fullscreen, full drama, solve and play" @click="quickSolve">
+        ⚡ Quick Solve
+      </button>
     </header>
 
-    <main>
+    <main ref="mainEl" :style="leftWidth ? { '--left-w': leftWidth + 'px' } : null">
       <div class="stage">
           <div class="viewport" ref="viewport" :style="{ height: viewportHeight + 'px' }">
           <CubeView
@@ -60,6 +63,15 @@
         
       </div>
 
+      <div
+        class="col-divider"
+        :class="{ dragging: draggingDivider }"
+        role="separator"
+        aria-orientation="vertical"
+        title="Drag to resize"
+        @pointerdown.prevent="startDividerDrag"
+      ></div>
+
       <aside>
         <SetupPanel v-if="store.mode === 'setup'" />
         <SolvePanel v-else-if="store.mode === 'solve'" />
@@ -105,6 +117,51 @@ function onPaint(slot, color) {
   if (color === undefined) return paint(slot);
   store.brush = color;
   paint(slot, color);
+}
+
+const MIN_LEFT = 300;
+const MIN_RIGHT = 340;
+const DIVIDER_W = 14;
+const mainEl = ref(null);
+const leftWidth = ref(0);
+const draggingDivider = ref(false);
+
+function startDividerDrag(e) {
+  const main = mainEl.value;
+  const stageEl = main.querySelector('.stage');
+  const startX = e.clientX;
+  const startW = stageEl.getBoundingClientRect().width;
+  const cs = getComputedStyle(main);
+  const maxW = main.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - DIVIDER_W - MIN_RIGHT;
+  draggingDivider.value = true;
+  function onMove(ev) {
+    leftWidth.value = Math.round(Math.max(MIN_LEFT, Math.min(maxW, startW + ev.clientX - startX)));
+  }
+  function onUp() {
+    draggingDivider.value = false;
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+  }
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp);
+}
+
+const canQuickSolve = computed(
+  () => validity.value.ok && !store.playing && !store.busy && !store.exploding && !store.countdown,
+);
+
+function quickSolve() {
+  if (!canQuickSolve.value) return;
+  store.editing = false;
+  store.drama = true;
+  store.finale = true;
+  store.speed = 0.5;
+  store.dramaSpeed = 1.2;
+  store.fullscreenOnPlay = true;
+  // must run inside the click handler to count as a user gesture
+  viewport.value?.requestFullscreen?.().catch(() => {});
+  store.mode = 'solve';
+  store.quickSolveRequest = true;
 }
 
 function startResize(e) {
