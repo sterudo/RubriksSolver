@@ -66,7 +66,7 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref, watch, computed } from 'vue';
 import CubeView from './components/CubeView.vue';
 import LearnPanel from './components/LearnPanel.vue';
 import MovePad from './components/MovePad.vue';
