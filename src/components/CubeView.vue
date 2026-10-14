@@ -22,7 +22,7 @@ const props = defineProps({
   touchMode: { type: String, default: 'rotate' },
   touchLocked: { type: Boolean, default: false },
 });
-const emit = defineEmits(['paint', 'layerturn', 'hovering']);
+const emit = defineEmits(['paint', 'layerturn', 'hovering', 'zoom']);
 
 const host = ref(null);
 let renderer;
@@ -103,6 +103,7 @@ function resetView() {
   camera.lookAt(target);
   spin.vx = 0;
   spin.vy = 0;
+  reportZoom();
 }
 
 function resize() {
@@ -149,6 +150,20 @@ function zoomBy(factor) {
   _eye.copy(camera.position).sub(target);
   const distance = Math.min(MAX_DISTANCE, Math.max(MIN_DISTANCE, _eye.length() * factor));
   camera.position.copy(target).add(_eye.setLength(distance));
+  reportZoom();
+}
+
+function reportZoom() {
+  const distance = camera.position.distanceTo(target);
+  emit('zoom', 100 * (MAX_DISTANCE - distance) / (MAX_DISTANCE - MIN_DISTANCE));
+}
+
+function setZoom(value) {
+  if (!camera || !Number.isFinite(value)) return;
+  const distance = MAX_DISTANCE - Math.min(100, Math.max(0, value)) * (MAX_DISTANCE - MIN_DISTANCE) / 100;
+  _eye.copy(camera.position).sub(target).setLength(distance);
+  camera.position.copy(target).add(_eye);
+  reportZoom();
 }
 
 function onViewPointerDown(e) {
@@ -778,7 +793,7 @@ function viewRelativeMove(face, suffix) {
   return relativeFaces(eye, right)[face] + suffix;
 }
 
-defineExpose({ animate, resetView, explode, gamepadView, viewRelativeMove });
+defineExpose({ animate, resetView, explode, gamepadView, viewRelativeMove, setZoom });
 </script>
 
 <style scoped>

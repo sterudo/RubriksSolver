@@ -1,17 +1,25 @@
 <template>
   <div class="app">
-    <header>
+    <header ref="headerEl" @keydown.esc="closeMobileMenu(true)">
       <h1>
         <a class="logo" href="https://github.com/sterudo/RubriksSolver" target="_blank" rel="noopener" title="Open the repository on GitHub">🧊 Rubik's Solver</a>
       </h1>
-      <nav>
-        <button v-for="t in tabs" :key="t.id" :class="{ on: store.mode === t.id }" @click="store.mode = t.id">
-          {{ t.label }}
-        </button>
-      </nav>
-      <button class="quick-solve" :disabled="!canQuickSolve" title="Fullscreen, full drama, solve and play" @click="quickSolve()">
+      <button class="quick-solve" :disabled="!canQuickSolve" title="Fullscreen, full drama, solve and play"
+        @click="quickSolve(); closeMobileMenu()">
         ⚡ Quick Solve
       </button>
+      <button ref="menuToggle" class="menu-toggle" aria-label="Toggle navigation"
+        aria-controls="header-actions" :aria-expanded="mobileMenuOpen" @click="mobileMenuOpen = !mobileMenuOpen">
+        <span aria-hidden="true">&#9776;</span>
+      </button>
+      <div id="header-actions" class="header-actions" :class="{ open: mobileMenuOpen }">
+        <nav aria-label="Main navigation">
+          <button v-for="t in tabs" :key="t.id" :class="{ on: store.mode === t.id }"
+            @click="store.mode = t.id; closeMobileMenu()">
+            {{ t.label }}
+          </button>
+        </nav>
+      </div>
     </header>
 
     <main ref="mainEl" :style="leftWidth ? { '--left-w': leftWidth + 'px' } : null">
@@ -32,9 +40,22 @@
             @paint="onPaint"
             @layerturn="(m) => turn(m)"
             @hovering="(v) => (hoveringSticker = v)"
+            @zoom="(value) => (zoom = value)"
           />
           <div class="overlay">
-            <button title="Reset camera" @click="cube?.resetView()">⟲ View</button>
+            <div class="view-controls">
+              <button title="Reset camera" @click="cube?.resetView()">⟲ View</button>
+              <button class="touch-mode-toggle" :aria-pressed="touchMode === 'move'"
+                :aria-label="`Move swipe mode ${touchMode === 'move' ? 'on' : 'off'}`"
+                @click="setTouchMode(touchMode === 'rotate' ? 'move' : 'rotate')">
+                {{ touchMode === 'rotate' ? 'Rotate' : 'Move' }}
+              </button>
+            </div>
+            <label class="zoom-control">
+              Zoom
+              <input type="range" min="0" max="100" step="0.1" :value="zoom" aria-label="Cube zoom"
+                @input="cube?.setZoom(Number($event.target.value))" />
+            </label>
             <span v-if="store.editing" class="badge">Painting: click stickers</span>
             <span v-else-if="solved" class="badge ok">Solved ✓</span>
             <span v-if="hoverColors && !hoveringSticker" class="brush-chip" title="Last assigned colour">
@@ -60,7 +81,8 @@
             <div class="mobile-controls" role="toolbar" aria-label="Cube touch controls">
               <button :disabled="mobileBusy" @click="mobilePosition('reset')">Reset</button>
               <button :disabled="mobileBusy" @click="mobilePosition('scramble')">Scramble</button>
-              <button :disabled="!canQuickSolve || mobilePending" @click="mobileSolve">Solve</button>
+              <button :disabled="!canMobileStep" title="Compute a solution if needed and perform its next move"
+                @click="mobileSolve">Solve</button>
               <button :aria-pressed="touchMode === 'rotate'" :class="{ on: touchMode === 'rotate' }"
                 @click="setTouchMode('rotate')">Rotate</button>
               <button :aria-pressed="touchMode === 'move'" :class="{ on: touchMode === 'move' }"
@@ -133,6 +155,18 @@ const tabs = [
   { id: 'about', label: 'About' },
 ];
 const cube = ref(null);
+const zoom = ref(50);
+const headerEl = ref(null);
+const menuToggle = ref(null);
+const mobileMenuOpen = ref(false);
+function closeMobileMenu(restoreFocus = false) {
+  if (!mobileMenuOpen.value) return;
+  mobileMenuOpen.value = false;
+  if (restoreFocus) menuToggle.value?.focus();
+}
+function onOutsideMenu(event) {
+  if (!headerEl.value?.contains(event.target)) closeMobileMenu();
+}
 const viewport = ref(null);
 const viewportHeight = ref(Math.max(300, Math.min(window.innerHeight * 0.62, 640)));
 const resizing = ref(false);
@@ -144,6 +178,8 @@ const mobilePending = ref(false);
 const mobileError = ref('');
 const mobileBusy = computed(() => mobilePending.value || store.busy || store.playing || store.solving
   || store.exploding || store.quickSolveRequest);
+const canMobileStep = computed(() => !mobileBusy.value && validity.value.ok
+  && (!store.solution || store.pointer < store.solution.moves.length));
 const hoverColors = computed(() => store.mode === 'setup' && store.showAllColorsOnHover);
 
 function setTouchMode(mode) {
@@ -165,9 +201,28 @@ async function mobilePosition(action) {
   }
 }
 
-function mobileSolve() {
+async function nextComputedMove() {
+  if (!validity.value.ok) throw new Error('Cannot solve this cube: check the position in Set up.');
+  if (!store.solution) {
+    const result = await computeSolution();
+    if (!result) throw new Error(store.solveError || 'Could not compute a solution.');
+  }
+  store.mode = 'solve';
+  await stepForward();
+}
+
+async function mobileSolve() {
+  if (!canMobileStep.value) return;
+  mobilePending.value = true;
   mobileError.value = '';
-  quickSolve(false);
+  store.editing = false;
+  try {
+    await nextComputedMove();
+  } catch (e) {
+    mobileError.value = e.message;
+  } finally {
+    mobilePending.value = false;
+  }
 }
 
 function onPaint(slot, color) {
@@ -239,13 +294,7 @@ async function onGamepadAction(action, dt) {
         gamepad.message = 'Quick Solve started. For fullscreen, use the mouse Quick Solve button.';
       } else gamepad.error = 'Quick Solve requires a valid cube position.';
     } else if (action === 'next-step') {
-      if (!validity.value.ok) { gamepad.error = 'Cannot solve this cube: check the position in Set up.'; return; }
-      if (!store.solution) {
-        const result = await computeSolution();
-        if (!result) { gamepad.error = store.solveError || 'Could not compute a solution.'; return; }
-      }
-      store.mode = 'solve';
-      await stepForward();
+      await nextComputedMove();
     } else if (action === 'undo') await undo();
     else if (action === 'scramble') await scramble();
     else if (action === 'reset') await reset();
@@ -292,6 +341,7 @@ onMounted(() => {
   registerAnimator((move, next, speed) => cube.value.animate(move, next, speed));
   registerExploder(() => cube.value.explode());
   window.addEventListener('keydown', onKey);
+  document.addEventListener('pointerdown', onOutsideMenu);
   stopGamepad = startGamepad(onGamepadAction);
 
   document.addEventListener('fullscreenchange', () => {
@@ -303,6 +353,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKey);
+  document.removeEventListener('pointerdown', onOutsideMenu);
   stopGamepad?.();
 });
 

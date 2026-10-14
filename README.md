@@ -79,8 +79,11 @@ Existing saved profiles remain unchanged. Browser storage is per origin and does
 
 ### Mobile cube controls
 On phones and small touch screens, a fixed bottom bar keeps **Reset**, **Scramble**,
-**Solve**, **Rotate**, and **Move** available while scrolling. Reset restores a solved
-position; Solve computes and plays the solution without forcing fullscreen.
+**Solve**, **Rotate**, and **Move** available while scrolling. The header keeps the logo
+and name visible, with Quick Solve beside them and navigation inside a hamburger menu. The cube
+display uses the full viewport width. Reset restores a solved
+position; each **Solve** press performs one computed solution move, calculating the
+solution first if needed, without starting playback or forcing fullscreen.
 **Rotate** (the default) uses the existing free swipe/spin view rotation and pinch zoom.
 **Move** keeps the view still: start on a sticker and swipe along its row or column
 to turn that layer in the finger's direction. Each swipe produces one quarter turn;
@@ -88,6 +91,14 @@ swipes on empty space do nothing, and two-finger gestures do not turn layers.
 On a 3×3, middle rows use the same opposite-outer-layer equivalent as mouse-wheel
 turns, preserving the stored cube orientation. Rotate/Move exit sticker painting.
 Mouse dragging and wheel controls are unchanged.
+The **Zoom** slider beside **View** works on desktop and mobile, and stays synced with
+wheel, pinch and gamepad zoom. View resets also reset the slider.
+The Rotate/Move toggle below View stays synced with the bottom mode buttons.
+
+### Versioning
+Increment the patch version for each source commit with `npm version patch --no-git-tag-version`.
+Include both `package.json` and `package-lock.json` in the commit. The About view reads
+this version at build time; keep its feature list current when adding user-facing features.
 
 ### Enter a position from two photos
 1. Photo 1: look straight at a corner of the cube. Photo 2: flip the cube over "like a pancake" (about the photo's horizontal axis) so the opposite corner faces the camera.

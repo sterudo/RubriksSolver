@@ -29,13 +29,19 @@
 
     <h3>Main features</h3>
     <ul>
-      <li>2×2 and 3×3 cubes with a drag-to-rotate 3D view, layer turns by mouse, wheel or keyboard</li>
+      <li>2×2 and 3×3 cubes with a free drag-and-spin 3D view, pinch/wheel zoom and a synced zoom slider</li>
+      <li>Layer turns by mouse, wheel or keyboard, and undo for manual turns or solution moves</li>
+      <li>Mobile: edge-to-edge cube, hamburger navigation, header Quick Solve, always-visible Reset/Scramble/Solve controls
+        (Solve advances one computed move), and synced Rotate/Move controls for view rotation or sticker-row turns</li>
+      <li>Xbox-style gamepad controls with modifiers, view-relative face turns, configurable thresholds,
+        named profiles, Save As, browser storage and JSON import/export</li>
       <li>Set up any position: paint stickers on the cube or the flat net, scramble, or import from two photos</li>
       <li>Live validity check telling you whether a position is solvable</li>
       <li>Step-by-step solver that explains every stage, with play/pause, speed and keyboard control</li>
       <li>Learn lessons and Practice tests, with a built-in or AI tutor</li>
       <li>Fullscreen mode, Extra drama camera, countdown and cube explosion finale, and one-click Quick Solve</li>
-      <li>Save and load positions; resizable cube frame and draggable panel divider</li>
+      <li>Save and load named positions across cube sizes, with JSON import/export and copy/paste position codes;
+        resizable cube frame and draggable panel divider</li>
     </ul>
   </section>
 </template>
