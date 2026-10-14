@@ -95,6 +95,21 @@ main {
 .overlay > * {
   pointer-events: auto;
 }
+
+/* Validity box shown in the top-right of the cube viewport (setup mode) */
+.validity {
+  margin-left: auto;
+  background: rgba(27,32,48,0.92);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+  max-width: 320px;
+  font-size: 13px;
+  text-align: right;
+}
+.validity .small { font-size: 12px; margin: 0; }
+.validity ul { margin: 0; padding-left: 16px; text-align: left; }
+
 .badge {
   background: #1b2030;
   border: 1px solid var(--line);
@@ -118,6 +133,31 @@ main {
   line-height: 1;
   color: #fff;
   text-shadow:
+}
+
+/* Resize handle at bottom of viewport */
+.resize-handle {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 10px;
+  cursor: ns-resize;
+  background: linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  z-index: 20;
+}
+
+.exit-fullscreen {
+  margin-left: 8px;
+  background: #b23;
+  color: #fff;
+  border: none;
+  padding: 6px 8px;
+  border-radius: 6px;
+}
+
+.drama-speed input[type="range"] { width: 140px; margin-left: 8px; vertical-align: middle; }
+.fullscreen-mode small { display: block; color: var(--muted); font-size: 11px; }
     0 0 24px rgba(255, 170, 60, 0.95),
     0 0 70px rgba(255, 90, 30, 0.8),
     0 6px 0 rgba(0, 0, 0, 0.35);

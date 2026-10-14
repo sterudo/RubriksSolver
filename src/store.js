@@ -19,7 +19,9 @@ export const store = reactive({
   speed: 1,
   playing: false, // the solution is being played automatically
   drama: localStorage.getItem('rubiks-solver.drama') === '1', // "Extra drama": slow camera swirl while playing
+  dramaSpeed: parseFloat(localStorage.getItem('rubiks-solver.dramaSpeed') || '0.32'), // camera rotation speed (radians/sec)
   finale: localStorage.getItem('rubiks-solver.finale') === '1', // "Extra, extra drama": countdown + explosion at the end
+  fullscreenOnPlay: false, // when true, entering play in Solve view requests fullscreen
   countdown: 0, // 3, 2, 1 while the finale countdown runs, else 0
   exploding: false, // the explosion / re-forming animation is running
   busy: false,
