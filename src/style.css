@@ -108,8 +108,12 @@ main {
   text-align: right;
 }
 .validity .small { font-size: 12px; margin: 0; }
+.validity .small { font-size: 12px; margin: 0; }
 .validity ul { margin: 0; padding-left: 16px; text-align: left; }
-
+/* Hover palette */
+.hover-palette { position: absolute; display: flex; gap: 6px; align-items: center; pointer-events: auto; z-index: 60; }
+.mini-swatch { width: 18px; height: 18px; border-radius: 4px; cursor: pointer; box-sizing: border-box; }
+.full-swatch { width: 36px; height: 36px; border-radius: 6px; box-shadow: 0 0 0 2px rgba(0,0,0,0.4) inset; }
 .badge {
   background: #1b2030;
   border: 1px solid var(--line);

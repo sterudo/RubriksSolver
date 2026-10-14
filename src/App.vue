@@ -23,6 +23,7 @@
               :rumble="store.countdown ? (4 - store.countdown) / 3 : 0"
               @paint="onPaint"
               @layerturn="(m) => turn(m)"
+              @hover-info="onHoverInfo"
             />
             <div class="overlay">
               <button title="Reset camera" @click="cube?.resetView()">⟲ View</button>
@@ -39,6 +40,24 @@
               <button v-if="isFullscreen && showExitFullscreen" class="exit-fullscreen" @click="exitFullscreen()">
                 Exit Fullscreen mode
               </button>
+
+              <!-- Hover palette for setup mode -->
+              <div v-if="store.mode === 'setup' && store.showAllColorsOnHover" class="hover-palette" :style="hoverStyle">
+                <template v-if="hoverInfo.slot !== null">
+                  <button
+                    v-for="(hex, i) in FACE_COLOR_HEX"
+                    :key="i"
+                    class="mini-swatch"
+                    :style="{ background: hex, border: (i === store.brush) ? '2px solid #000' : (i === miniHover ? '2px solid #39f' : '2px solid transparent') }"
+                    @mouseenter="miniHover = i"
+                    @mouseleave="miniHover = null"
+                    @click="store.brush = i"
+                  ></button>
+                </template>
+                <template v-else>
+                  <div class="full-swatch" :style="{ background: FACE_COLOR_HEX[store.brush] }"></div>
+                </template>
+              </div>
             </div>
             <div v-if="store.countdown" :key="store.countdown" class="countdown" aria-live="assertive">
               <span>{{ store.countdown }}</span>
@@ -76,6 +95,7 @@ import SetupPanel from './components/SetupPanel.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import SolvePanel from './components/SolvePanel.vue';
 import { cubeState, paint, registerAnimator, registerExploder, solved, store, turn, validity } from './store.js';
+import { FACE_COLOR_HEX } from './core/cube.js';
 
 const tabs = [
   { id: 'setup', label: 'Set up' },
@@ -90,6 +110,20 @@ const viewportHeight = ref(Math.max(300, Math.min(window.innerHeight * 0.62, 640
 const resizing = ref(false);
 const isFullscreen = ref(false);
 const showExitFullscreen = ref(false);
+const hoverInfo = ref({ slot: null, x: 0, y: 0 });
+const miniHover = ref(null);
+
+const hoverStyle = computed(() => {
+  if (!viewport.value) return {};
+  const rect = viewport.value.getBoundingClientRect();
+  if (hoverInfo.value.slot !== null) {
+    const left = hoverInfo.value.x - rect.left;
+    const top = hoverInfo.value.y - rect.top;
+    return { position: 'absolute', left: `${left}px`, top: `${top}px`, transform: 'translate(-50%,-50%)' };
+  }
+  // no sticker hovered: show top-right small swatch
+  return { position: 'absolute', right: '12px', top: '12px' };
+});
 
 function onPaint(slot) {
   if (store.editing) paint(slot);
@@ -132,6 +166,11 @@ onMounted(() => {
     if (!isFullscreen.value) showExitFullscreen.value = false;
   });
 });
+
+function onHoverInfo(payload) {
+  hoverInfo.value = payload || { slot: null, x: 0, y: 0 };
+}
+
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
 
 // Watch for starting play to auto-enter fullscreen when enabled

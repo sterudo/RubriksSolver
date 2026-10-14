@@ -17,7 +17,7 @@ const props = defineProps({
   rumble: { type: Number, default: 0 },
   dramaSpeed: { type: Number, default: 0.32 },
 });
-const emit = defineEmits(['paint', 'layerturn']);
+const emit = defineEmits(['paint', 'layerturn', 'hover-info']);
 
 const host = ref(null);
 let renderer;
@@ -519,6 +519,22 @@ function layerMoveForWheel(slot, dir, horizontal) {
   return `${pos}${sigma > 0 ? '' : "'"} ${neg}${sigma > 0 ? "'" : ''}`;
 }
 
+function handleHover(clientX, clientY) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  const hit = pickSticker(clientX, clientY);
+  if (hit) {
+    const worldPos = new THREE.Vector3();
+    hit.object.getWorldPosition(worldPos);
+    const ndc = worldPos.project(camera);
+    const cx = rect.left + ((ndc.x * 0.5 + 0.5) * rect.width);
+    const cy = rect.top + ((-ndc.y * 0.5 + 0.5) * rect.height);
+    emit('hover-info', { slot: hit.object.userData.slot, x: cx, y: cy });
+  } else {
+    // no sticker: emit null slot and mouse position so the UI can show the last color
+    emit('hover-info', { slot: null, x: clientX, y: clientY });
+  }
+}
+
 function onWheel(e) {
   if (props.paintable) return;
   const hit = pickSticker(e.clientX, e.clientY);
@@ -538,6 +554,11 @@ onMounted(() => {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   host.value.appendChild(renderer.domElement);
   scene = new THREE.Scene();
+  // pointer hover listeners (independent of drag handling)
+  renderer.domElement.addEventListener('pointermove', (ev) => {
+    try { handleHover(ev.clientX, ev.clientY); } catch (e) { /* ignore */ }
+  });
+  renderer.domElement.addEventListener('pointerleave', () => emit('hover-info', { slot: null, x: 0, y: 0 }));
   camera = new THREE.PerspectiveCamera(36, 1, 0.1, 100);
   scene.add(new THREE.AmbientLight(0xffffff, 1.1));
   const key = new THREE.DirectionalLight(0xffffff, 2.0);
