@@ -27,6 +27,13 @@
             <button title="Reset camera" @click="cube?.resetView()">⟲ View</button>
             <span v-if="store.editing" class="badge">Painting: click stickers</span>
             <span v-else-if="solved" class="badge ok">Solved ✓</span>
+
+            <div v-if="store.mode === 'setup'" class="validity" :class="{ ok: validity.ok }">
+              <p v-if="validity.ok" class="status ok small">This position is valid and solvable.</p>
+              <ul v-else class="status bad small">
+                <li v-for="e in validity.errors" :key="e">{{ e }}</li>
+              </ul>
+            </div>
           </div>
           <div v-if="store.countdown" :key="store.countdown" class="countdown" aria-live="assertive">
             <span>{{ store.countdown }}</span>
@@ -61,7 +68,7 @@ import SaveLoad from './components/SaveLoad.vue';
 import SetupPanel from './components/SetupPanel.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import SolvePanel from './components/SolvePanel.vue';
-import { cubeState, paint, registerAnimator, registerExploder, solved, store, turn } from './store.js';
+import { cubeState, paint, registerAnimator, registerExploder, solved, store, turn, validity } from './store.js';
 
 const tabs = [
   { id: 'setup', label: 'Set up' },

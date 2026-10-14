@@ -38,11 +38,6 @@
 
     <NetEditor :n="store.n" :state="cubeState" @paint="(slot) => store.editing && paint(slot)" />
 
-    <p v-if="validity.ok" class="status ok">This position is valid and solvable.</p>
-    <ul v-else class="status bad">
-      <li v-for="e in validity.errors" :key="e">{{ e }}</li>
-    </ul>
-
     <details class="photos">
       <summary>Import from two photos</summary>
       <PhotoImport :n="store.n" @import="(s) => setPosition(s)" />

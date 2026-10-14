@@ -95,6 +95,21 @@ main {
 .overlay > * {
   pointer-events: auto;
 }
+
+/* Validity box shown in the top-right of the cube viewport (setup mode) */
+.validity {
+  margin-left: auto;
+  background: rgba(27,32,48,0.92);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+  max-width: 320px;
+  font-size: 13px;
+  text-align: right;
+}
+.validity .small { font-size: 12px; margin: 0; }
+.validity ul { margin: 0; padding-left: 16px; text-align: left; }
+
 .badge {
   background: #1b2030;
   border: 1px solid var(--line);
