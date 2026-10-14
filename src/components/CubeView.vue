@@ -15,6 +15,7 @@ const props = defineProps({
   locked: { type: Boolean, default: false },
   drama: { type: Boolean, default: false },
   rumble: { type: Number, default: 0 },
+  dramaSpeed: { type: Number, default: 0.32 },
 });
 const emit = defineEmits(['paint', 'layerturn']);
 
@@ -197,7 +198,7 @@ function onViewWheel(e) {
 // "Extra drama": a slow, smooth swirl as if the pointer were dragged round and round the
 // cube's centre. The drag direction turns steadily, so the view tumbles in a circle. The
 // effect eases in and out and gives way as soon as the user takes hold of the cube.
-const DRAMA_SPEED = 0.32; // radians of rotation per second
+const DRAMA_SPEED = props.dramaSpeed; // radians of rotation per second (configurable)
 const DRAMA_TURN = 0.55; // radians per second the drag direction revolves (~11 s per circle)
 const drama = { level: 0, phase: 0, last: 0 };
 

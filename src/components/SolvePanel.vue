@@ -36,10 +36,21 @@
         Extra drama
         <small>– slow, smooth camera rotation during playback</small>
       </label>
+      <label class="drama-speed" title="Rotation speed while Extra drama is enabled">
+        Rotation speed
+        <input v-model.number="store.dramaSpeed" type="range" min="0.05" max="1.2" step="0.01" />
+      </label>
+
       <label class="drama" title="When the cube is solved: 3-2-1, explosion, and the cube re-forms">
         <input v-model="store.finale" type="checkbox" />
         Extra, extra drama
         <small>– 3-2-1 countdown, then the cube explodes (and re-forms)</small>
+      </label>
+
+      <label class="fullscreen-mode">
+        <input v-model="store.fullscreenOnPlay" type="checkbox" />
+        Fullscreen mode
+        <small>When enabled, hitting Play makes the cube go fullscreen</small>
       </label>
       <div class="bar"><div :style="{ width: `${(store.pointer / Math.max(1, total)) * 100}%` }"></div></div>
 
@@ -79,13 +90,31 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch, onMounted } from 'vue';
 import TutorBox from './TutorBox.vue';
 import { lessonFor } from '../core/lessons.js';
 import { cancelFinale, computeSolution, runFinale, solved, stepBack, stepForward, store, timeline, validity } from '../store.js';
 
 const solving = ref(false);
 const playing = ref(false);
+
+onMounted(() => {
+  function handler(e) {
+    // ignore when typing or with modifier keys
+    const tag = e.target?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (store.mode !== 'solve') return;
+    if (e.code === 'Space') {
+      e.preventDefault();
+      stepForward();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      togglePlay();
+    }
+  }
+  window.addEventListener('keydown', handler);
+  onBeforeUnmount(() => window.removeEventListener('keydown', handler));
+});
 // the camera effect needs to know about playback, and the checkboxes are remembered
 watch(playing, (value) => (store.playing = value), { immediate: true });
 watch(
