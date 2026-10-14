@@ -33,15 +33,14 @@
     </div>
 
     <div v-if="store.editing" class="palette">
-      <button
+      <span
         v-for="(hex, i) in FACE_COLOR_HEX"
         :key="i"
-        class="swatch"
-        :class="{ on: store.brush === i }"
-        :style="{ background: hex }"
-        :title="FACE_COLOR_NAMES[i]"
-        @click="store.brush = i"
-      ></button>
+        class="swatch-box"
+        :class="{ on: !store.showAllColorsOnHover && store.brush === i }"
+      >
+        <button class="swatch" :style="{ background: hex }" :title="FACE_COLOR_NAMES[i]" @click="pickColor(i)"></button>
+      </span>
     </div>
 
     <NetEditor :n="store.n" :state="cubeState" @paint="(slot) => store.editing && paint(slot)" />
@@ -66,6 +65,10 @@ import { FACE_COLOR_HEX, FACE_COLOR_NAMES } from '../core/cube.js';
 import { cubeState, paint, reset, scramble, setPosition, setSize, store, validity } from '../store.js';
 
 const lastScramble = ref('');
+function pickColor(i) {
+  store.brush = i;
+  store.showAllColorsOnHover = false;
+}
 async function doScramble() {
   lastScramble.value = (await scramble()).join(' ');
 }
