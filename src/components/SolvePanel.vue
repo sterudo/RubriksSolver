@@ -172,6 +172,15 @@ async function play() {
   playing.value = false;
   if (finishedByItself && store.finale) runFinale();
 }
+async function quickSolve() {
+  store.quickSolveRequest = false;
+  if (playing.value) return;
+  solving.value = true;
+  const result = await computeSolution();
+  solving.value = false;
+  if (result) play();
+}
+watch(() => store.quickSolveRequest, (requested) => requested && quickSolve(), { immediate: true });
 function togglePlay() {
   if (playing.value) playing.value = false;
   else play();

@@ -57,13 +57,49 @@ nav button.on {
 main {
   flex: 1;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 1.5fr);
-  gap: 16px;
+  grid-template-columns: var(--left-w, minmax(0, 1fr)) 14px minmax(340px, 1.5fr);
+  gap: 16px 0;
   padding: 16px;
+}
+.col-divider {
+  cursor: col-resize;
+  position: relative;
+  touch-action: none;
+}
+.col-divider::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 4px;
+  margin-left: -2px;
+  border-radius: 2px;
+  background: var(--line);
+  transition: background 0.15s;
+}
+.col-divider:hover::after,
+.col-divider.dragging::after {
+  background: var(--accent);
+}
+.quick-solve {
+  margin-left: auto;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #0b0d12;
+  font-weight: 600;
+}
+.quick-solve:disabled {
+  background: none;
+  border-color: var(--line);
+  color: var(--muted);
 }
 @media (max-width: 900px) {
   main {
     grid-template-columns: 1fr;
+  }
+  .col-divider {
+    display: none;
   }
 }
 
