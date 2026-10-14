@@ -110,10 +110,21 @@ main {
 .validity .small { font-size: 12px; margin: 0; }
 .validity .small { font-size: 12px; margin: 0; }
 .validity ul { margin: 0; padding-left: 16px; text-align: left; }
-/* Hover palette */
-.hover-palette { position: absolute; display: flex; gap: 6px; align-items: center; pointer-events: auto; z-index: 60; }
-.mini-swatch { width: 18px; height: 18px; border-radius: 4px; cursor: pointer; box-sizing: border-box; }
-.full-swatch { width: 36px; height: 36px; border-radius: 6px; box-shadow: 0 0 0 2px rgba(0,0,0,0.4) inset; }
+/* Last assigned colour, shown while no sticker is hovered */
+.brush-chip {
+  display: inline-flex;
+  padding: 3px;
+  background: #1b2030;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.brush-chip i {
+  display: block;
+  width: 38px;
+  height: 26px;
+  border-radius: 5px;
+  box-shadow: 0 0 0 2px #000 inset;
+}
 .badge {
   background: #1b2030;
   border: 1px solid var(--line);
@@ -137,6 +148,10 @@ main {
   line-height: 1;
   color: #fff;
   text-shadow:
+    0 0 24px rgba(255, 170, 60, 0.95),
+    0 0 70px rgba(255, 90, 30, 0.8),
+    0 6px 0 rgba(0, 0, 0, 0.35);
+  animation: countdown-pop 1s ease-out both;
 }
 
 /* Resize handle at bottom of viewport */
@@ -162,11 +177,6 @@ main {
 
 .drama-speed input[type="range"] { width: 140px; margin-left: 8px; vertical-align: middle; }
 .fullscreen-mode small { display: block; color: var(--muted); font-size: 11px; }
-    0 0 24px rgba(255, 170, 60, 0.95),
-    0 0 70px rgba(255, 90, 30, 0.8),
-    0 6px 0 rgba(0, 0, 0, 0.35);
-  animation: countdown-pop 1s ease-out both;
-}
 @keyframes countdown-pop {
   0% {
     transform: scale(2.6);
