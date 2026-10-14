@@ -19,46 +19,33 @@
             :paintable="store.editing"
             :locked="store.busy || store.exploding"
             :drama="store.drama && store.playing"
-              :dramaSpeed="store.dramaSpeed"
-              :rumble="store.countdown ? (4 - store.countdown) / 3 : 0"
-              @paint="onPaint"
-              @layerturn="(m) => turn(m)"
-              @hover-info="onHoverInfo"
-            />
-            <div class="overlay">
-              <button title="Reset camera" @click="cube?.resetView()">⟲ View</button>
-              <span v-if="store.editing" class="badge">Painting: click stickers</span>
-              <span v-else-if="solved" class="badge ok">Solved ✓</span>
+            :dramaSpeed="store.dramaSpeed"
+            :rumble="store.countdown ? (4 - store.countdown) / 3 : 0"
+            :hoverColors="hoverColors"
+            :brush="store.brush"
+            @paint="onPaint"
+            @layerturn="(m) => turn(m)"
+            @hovering="(v) => (hoveringSticker = v)"
+          />
+          <div class="overlay">
+            <button title="Reset camera" @click="cube?.resetView()">⟲ View</button>
+            <span v-if="store.editing" class="badge">Painting: click stickers</span>
+            <span v-else-if="solved" class="badge ok">Solved ✓</span>
+            <span v-if="hoverColors && !hoveringSticker" class="brush-chip" title="Last assigned colour">
+              <i :style="{ background: FACE_COLOR_HEX[store.brush] }"></i>
+            </span>
 
-              <div v-if="store.mode === 'setup'" class="validity" :class="{ ok: validity.ok }">
-                <p v-if="validity.ok" class="status ok small">This position is valid and solvable.</p>
-                <ul v-else class="status bad small">
-                  <li v-for="e in validity.errors" :key="e">{{ e }}</li>
-                </ul>
-              </div>
-
-              <button v-if="isFullscreen && showExitFullscreen" class="exit-fullscreen" @click="exitFullscreen()">
-                Exit Fullscreen mode
-              </button>
-
-              <!-- Hover palette for setup mode -->
-              <div v-if="store.mode === 'setup' && store.showAllColorsOnHover" class="hover-palette" :style="hoverStyle">
-                <template v-if="hoverInfo.slot !== null">
-                  <button
-                    v-for="(hex, i) in FACE_COLOR_HEX"
-                    :key="i"
-                    class="mini-swatch"
-                    :style="{ background: hex, border: (i === store.brush) ? '2px solid #000' : (i === miniHover ? '2px solid #39f' : '2px solid transparent') }"
-                    @mouseenter="miniHover = i"
-                    @mouseleave="miniHover = null"
-                    @click="store.brush = i"
-                  ></button>
-                </template>
-                <template v-else>
-                  <div class="full-swatch" :style="{ background: FACE_COLOR_HEX[store.brush] }"></div>
-                </template>
-              </div>
+            <div v-if="store.mode === 'setup'" class="validity" :class="{ ok: validity.ok }">
+              <p v-if="validity.ok" class="status ok small">This position is valid and solvable.</p>
+              <ul v-else class="status bad small">
+                <li v-for="e in validity.errors" :key="e">{{ e }}</li>
+              </ul>
             </div>
+
+            <button v-if="isFullscreen && showExitFullscreen" class="exit-fullscreen" @click="exitFullscreen()">
+              Exit Fullscreen mode
+            </button>
+          </div>
             <div v-if="store.countdown" :key="store.countdown" class="countdown" aria-live="assertive">
               <span>{{ store.countdown }}</span>
             </div>
@@ -110,23 +97,14 @@ const viewportHeight = ref(Math.max(300, Math.min(window.innerHeight * 0.62, 640
 const resizing = ref(false);
 const isFullscreen = ref(false);
 const showExitFullscreen = ref(false);
-const hoverInfo = ref({ slot: null, x: 0, y: 0 });
-const miniHover = ref(null);
+const hoveringSticker = ref(false);
+const hoverColors = computed(() => store.mode === 'setup' && store.showAllColorsOnHover);
 
-const hoverStyle = computed(() => {
-  if (!viewport.value) return {};
-  const rect = viewport.value.getBoundingClientRect();
-  if (hoverInfo.value.slot !== null) {
-    const left = hoverInfo.value.x - rect.left;
-    const top = hoverInfo.value.y - rect.top;
-    return { position: 'absolute', left: `${left}px`, top: `${top}px`, transform: 'translate(-50%,-50%)' };
-  }
-  // no sticker hovered: show top-right small swatch
-  return { position: 'absolute', right: '12px', top: '12px' };
-});
-
-function onPaint(slot) {
-  if (store.editing) paint(slot);
+function onPaint(slot, color) {
+  if (!store.editing) return;
+  if (color === undefined) return paint(slot);
+  store.brush = color;
+  paint(slot, color);
 }
 
 function startResize(e) {
@@ -167,9 +145,6 @@ onMounted(() => {
   });
 });
 
-function onHoverInfo(payload) {
-  hoverInfo.value = payload || { slot: null, x: 0, y: 0 };
-}
 
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
 

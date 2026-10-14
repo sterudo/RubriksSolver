@@ -26,8 +26,9 @@
 
     <div class="row">
       <label style="display:flex;align-items:center;gap:8px;">
-        <input type="checkbox" v-model="store.showAllColorsOnHover" />
+        <input type="checkbox" v-model="store.showAllColorsOnHover" @change="store.showAllColorsOnHover && (store.editing = true)" />
         Show all colors on hover
+        <span class="note">(click a color on the sticker to paint it)</span>
       </label>
     </div>
 

@@ -16,8 +16,10 @@ const props = defineProps({
   drama: { type: Boolean, default: false },
   rumble: { type: Number, default: 0 },
   dramaSpeed: { type: Number, default: 0.32 },
+  hoverColors: { type: Boolean, default: false },
+  brush: { type: Number, default: 0 },
 });
-const emit = defineEmits(['paint', 'layerturn', 'hover-info']);
+const emit = defineEmits(['paint', 'layerturn', 'hovering']);
 
 const host = ref(null);
 let renderer;
@@ -57,6 +59,7 @@ const stickerGeometry = roundedRect(0.84, 0.12);
 const bodyGeometry = new RoundedBoxGeometry(0.98, 0.98, 0.98, 3, 0.1);
 
 function build() {
+  clearHover();
   if (cubeGroup) scene.remove(cubeGroup);
   spec = getSpec(props.n);
   cubeGroup = new THREE.Group();
@@ -198,7 +201,6 @@ function onViewWheel(e) {
 // "Extra drama": a slow, smooth swirl as if the pointer were dragged round and round the
 // cube's centre. The drag direction turns steadily, so the view tumbles in a circle. The
 // effect eases in and out and gives way as soon as the user takes hold of the cube.
-const DRAMA_SPEED = props.dramaSpeed; // radians of rotation per second (configurable)
 const DRAMA_TURN = 0.55; // radians per second the drag direction revolves (~11 s per circle)
 const drama = { level: 0, phase: 0, last: 0 };
 
@@ -212,7 +214,7 @@ function updateDrama(now) {
   drama.phase += dt * DRAMA_TURN;
   const eased = drama.level * drama.level * (3 - 2 * drama.level);
   const height = renderer.domElement.clientHeight || 1;
-  const px = ((DRAMA_SPEED * height) / (2 * Math.PI)) * dt * eased; // px of "drag" this frame
+  const px = ((props.dramaSpeed * height) / (2 * Math.PI)) * dt * eased; // px of "drag" this frame
   rotateView(Math.cos(drama.phase) * px, Math.sin(drama.phase) * px);
 }
 
@@ -476,6 +478,121 @@ function pickSticker(clientX, clientY) {
   return raycaster.intersectObjects(stickerMeshes, false)[0];
 }
 
+// --- "Show all colours on hover" ------------------------------------------------------
+// While painting, the hovered sticker shows all six colours as a 3x2 grid drawn on the sticker
+// itself (child meshes, so it follows the cube and never steals pointer events). The grid is laid
+// out along the screen's horizontal/vertical, whichever way the face is turned. The pointer's
+// position on the sticker decides which cell is hovered and which colour a click paints.
+const GRID = 0.8; // grid size on the 0.84 sticker
+const CELL_W = GRID / 3;
+const CELL_H = GRID / 2;
+const RING = 0.025;
+const planeGeometry = new THREE.PlaneGeometry(1, 1);
+const blackMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+const blueMaterial = new THREE.MeshBasicMaterial({ color: 0x2f8cff });
+const cellMaterials = FACE_COLOR_HEX.map((hex) => new THREE.MeshBasicMaterial({ color: hex }));
+let hoverGroup = null;
+let hoverKey = '';
+let hovering = false;
+let lastPointer = null;
+const _wq = new THREE.Quaternion();
+const _v = new THREE.Vector3();
+
+function setHovering(value) {
+  if (hovering === value) return;
+  hovering = value;
+  emit('hovering', value);
+}
+
+function clearHover() {
+  hoverGroup?.parent?.remove(hoverGroup);
+  hoverGroup = null;
+  hoverKey = '';
+  if (renderer) setHovering(false);
+}
+
+function isLockedSticker(slot) {
+  return props.n === 3 && spec.cubies[spec.stickers[slot].cubie].kind === 'center';
+}
+
+// Which way the sticker's local x/y axes run on screen.
+function gridLayout(mesh) {
+  camera.updateMatrixWorld();
+  mesh.getWorldQuaternion(_wq).invert();
+  const right = _v.setFromMatrixColumn(camera.matrixWorld, 0).applyQuaternion(_wq).clone();
+  const up = _v.setFromMatrixColumn(camera.matrixWorld, 1).applyQuaternion(_wq);
+  const sign = (v) => (v >= 0 ? 1 : -1);
+  if (Math.abs(right.x) >= Math.abs(right.y)) return { swap: false, a: sign(right.x), b: sign(up.y) };
+  return { swap: true, a: sign(right.y), b: sign(up.x) };
+}
+
+// Sticker-local position (x, y) of a screen-space offset (u right, v up) from the sticker centre.
+function toLocal(layout, u, v) {
+  return layout.swap ? { x: layout.b * v, y: layout.a * u } : { x: layout.a * u, y: layout.b * v };
+}
+
+function cellAt(mesh, point, layout) {
+  const p = mesh.worldToLocal(point.clone());
+  const u = layout.swap ? layout.a * p.y : layout.a * p.x;
+  const v = layout.swap ? layout.b * p.x : layout.b * p.y;
+  const col = Math.min(2, Math.max(0, Math.floor((u + GRID / 2) / CELL_W)));
+  const row = Math.min(1, Math.max(0, Math.floor((GRID / 2 - v) / CELL_H)));
+  return row * 3 + col;
+}
+
+function addRect(group, layout, u, v, w, h, material, z) {
+  const { x, y } = toLocal(layout, u, v);
+  const mesh = new THREE.Mesh(planeGeometry, material);
+  mesh.position.set(x, y, z);
+  mesh.scale.set(layout.swap ? h : w, layout.swap ? w : h, 1);
+  group.add(mesh);
+}
+
+function buildHoverGrid(mesh, layout, hoverCell) {
+  hoverGroup?.parent?.remove(hoverGroup);
+  hoverGroup = new THREE.Group();
+  for (let c = 0; c < 6; c++) {
+    const u = ((c % 3) - 1) * CELL_W;
+    const v = (0.5 - Math.floor(c / 3)) * CELL_H;
+    const w = CELL_W - 0.02;
+    const h = CELL_H - 0.02;
+    const isHover = c === hoverCell;
+    const isBrush = c === props.brush;
+    let inset = 0;
+    if (isHover) {
+      addRect(hoverGroup, layout, u, v, w, h, blueMaterial, 0.004);
+      inset += RING;
+    }
+    if (isBrush) {
+      addRect(hoverGroup, layout, u, v, w - 2 * inset, h - 2 * inset, blackMaterial, 0.005);
+      inset += RING;
+    }
+    addRect(hoverGroup, layout, u, v, w - 2 * inset, h - 2 * inset, cellMaterials[c], 0.006);
+  }
+  mesh.add(hoverGroup);
+}
+
+function updateHover(clientX, clientY) {
+  lastPointer = { x: clientX, y: clientY };
+  if (!props.hoverColors || !props.paintable || props.locked || animating) return clearHover();
+  const hit = pickSticker(clientX, clientY);
+  if (!hit || isLockedSticker(hit.object.userData.slot)) return clearHover();
+  const mesh = hit.object;
+  const layout = gridLayout(mesh);
+  const cell = cellAt(mesh, hit.point, layout);
+  const key = `${mesh.userData.slot}|${cell}|${layout.swap}|${layout.a}|${layout.b}|${props.brush}`;
+  setHovering(true);
+  if (key === hoverKey) return;
+  hoverKey = key;
+  buildHoverGrid(mesh, layout, cell);
+}
+
+function refreshHover() {
+  hoverKey = '';
+  if (lastPointer && renderer) updateHover(lastPointer.x, lastPointer.y);
+  else clearHover();
+}
+
 // Click (not drag) on a sticker while painting.
 let downAt = null;
 function onPointerDown(e) {
@@ -487,7 +604,14 @@ function onPointerUp(e) {
   downAt = null;
   if (moved > 5) return;
   const hit = pickSticker(e.clientX, e.clientY);
-  if (hit) emit('paint', hit.object.userData.slot);
+  if (!hit) return;
+  const slot = hit.object.userData.slot;
+  if (props.hoverColors) {
+    if (isLockedSticker(slot)) return;
+    emit('paint', slot, cellAt(hit.object, hit.point, gridLayout(hit.object)));
+  } else {
+    emit('paint', slot);
+  }
 }
 
 // Wheel over a sticker turns the layer holding it: the sticker moves up/down on screen,
@@ -519,22 +643,6 @@ function layerMoveForWheel(slot, dir, horizontal) {
   return `${pos}${sigma > 0 ? '' : "'"} ${neg}${sigma > 0 ? "'" : ''}`;
 }
 
-function handleHover(clientX, clientY) {
-  const rect = renderer.domElement.getBoundingClientRect();
-  const hit = pickSticker(clientX, clientY);
-  if (hit) {
-    const worldPos = new THREE.Vector3();
-    hit.object.getWorldPosition(worldPos);
-    const ndc = worldPos.project(camera);
-    const cx = rect.left + ((ndc.x * 0.5 + 0.5) * rect.width);
-    const cy = rect.top + ((-ndc.y * 0.5 + 0.5) * rect.height);
-    emit('hover-info', { slot: hit.object.userData.slot, x: cx, y: cy });
-  } else {
-    // no sticker: emit null slot and mouse position so the UI can show the last color
-    emit('hover-info', { slot: null, x: clientX, y: clientY });
-  }
-}
-
 function onWheel(e) {
   if (props.paintable) return;
   const hit = pickSticker(e.clientX, e.clientY);
@@ -549,16 +657,19 @@ function onWheel(e) {
   emit('layerturn', layerMoveForWheel(hit.object.userData.slot, dir, e.altKey));
 }
 
+function onHoverMove(e) {
+  updateHover(e.clientX, e.clientY);
+}
+function onHoverLeave() {
+  lastPointer = null;
+  clearHover();
+}
+
 onMounted(() => {
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   host.value.appendChild(renderer.domElement);
   scene = new THREE.Scene();
-  // pointer hover listeners (independent of drag handling)
-  renderer.domElement.addEventListener('pointermove', (ev) => {
-    try { handleHover(ev.clientX, ev.clientY); } catch (e) { /* ignore */ }
-  });
-  renderer.domElement.addEventListener('pointerleave', () => emit('hover-info', { slot: null, x: 0, y: 0 }));
   camera = new THREE.PerspectiveCamera(36, 1, 0.1, 100);
   scene.add(new THREE.AmbientLight(0xffffff, 1.1));
   const key = new THREE.DirectionalLight(0xffffff, 2.0);
@@ -569,6 +680,8 @@ onMounted(() => {
   scene.add(fill);
   renderer.domElement.addEventListener('pointerdown', onViewPointerDown);
   renderer.domElement.addEventListener('pointermove', onViewPointerMove);
+  renderer.domElement.addEventListener('pointermove', onHoverMove);
+  renderer.domElement.addEventListener('pointerleave', onHoverLeave);
   renderer.domElement.addEventListener('pointerup', onViewPointerUp);
   renderer.domElement.addEventListener('pointercancel', onViewPointerUp);
   renderer.domElement.addEventListener('wheel', onViewWheel, { passive: false });
@@ -603,6 +716,7 @@ watch(
     if (!animating) recolor(s);
   },
 );
+watch(() => [props.hoverColors, props.paintable, props.locked, props.brush], refreshHover);
 
 defineExpose({ animate, resetView, explode });
 </script>
