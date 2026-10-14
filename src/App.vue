@@ -22,7 +22,6 @@
             :dramaSpeed="store.dramaSpeed"
             :rumble="store.countdown ? (4 - store.countdown) / 3 : 0"
             :hoverColors="hoverColors"
-            :brush="store.brush"
             @paint="onPaint"
             @layerturn="(m) => turn(m)"
             @hovering="(v) => (hoveringSticker = v)"

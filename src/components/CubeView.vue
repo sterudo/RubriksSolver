@@ -17,7 +17,6 @@ const props = defineProps({
   rumble: { type: Number, default: 0 },
   dramaSpeed: { type: Number, default: 0.32 },
   hoverColors: { type: Boolean, default: false },
-  brush: { type: Number, default: 0 },
 });
 const emit = defineEmits(['paint', 'layerturn', 'hovering']);
 
@@ -489,7 +488,6 @@ const CELL_H = GRID / 2;
 const RING = 0.025;
 const planeGeometry = new THREE.PlaneGeometry(1, 1);
 const blackMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-const blueMaterial = new THREE.MeshBasicMaterial({ color: 0x2f8cff });
 const cellMaterials = FACE_COLOR_HEX.map((hex) => new THREE.MeshBasicMaterial({ color: hex }));
 let hoverGroup = null;
 let hoverKey = '';
@@ -557,16 +555,8 @@ function buildHoverGrid(mesh, layout, hoverCell) {
     const w = CELL_W - 0.02;
     const h = CELL_H - 0.02;
     const isHover = c === hoverCell;
-    const isBrush = c === props.brush;
-    let inset = 0;
-    if (isHover) {
-      addRect(hoverGroup, layout, u, v, w, h, blueMaterial, 0.004);
-      inset += RING;
-    }
-    if (isBrush) {
-      addRect(hoverGroup, layout, u, v, w - 2 * inset, h - 2 * inset, blackMaterial, 0.005);
-      inset += RING;
-    }
+    if (isHover) addRect(hoverGroup, layout, u, v, w, h, blackMaterial, 0.004);
+    const inset = isHover ? RING : 0;
     addRect(hoverGroup, layout, u, v, w - 2 * inset, h - 2 * inset, cellMaterials[c], 0.006);
   }
   mesh.add(hoverGroup);
@@ -580,7 +570,7 @@ function updateHover(clientX, clientY) {
   const mesh = hit.object;
   const layout = gridLayout(mesh);
   const cell = cellAt(mesh, hit.point, layout);
-  const key = `${mesh.userData.slot}|${cell}|${layout.swap}|${layout.a}|${layout.b}|${props.brush}`;
+  const key = `${mesh.userData.slot}|${cell}|${layout.swap}|${layout.a}|${layout.b}`;
   setHovering(true);
   if (key === hoverKey) return;
   hoverKey = key;
@@ -716,7 +706,7 @@ watch(
     if (!animating) recolor(s);
   },
 );
-watch(() => [props.hoverColors, props.paintable, props.locked, props.brush], refreshHover);
+watch(() => [props.hoverColors, props.paintable, props.locked], refreshHover);
 
 defineExpose({ animate, resetView, explode });
 </script>
