@@ -1,7 +1,9 @@
 <template>
   <div class="app">
     <header>
-      <h1>🧊 Rubik's Solver</h1>
+      <h1>
+        <a class="logo" href="https://github.com/sterudo/RubriksSolver" target="_blank" rel="noopener" title="Open the repository on GitHub">🧊 Rubik's Solver</a>
+      </h1>
       <nav>
         <button v-for="t in tabs" :key="t.id" :class="{ on: store.mode === t.id }" @click="store.mode = t.id">
           {{ t.label }}
@@ -77,6 +79,7 @@
         <SolvePanel v-else-if="store.mode === 'solve'" />
         <LearnPanel v-else-if="store.mode === 'learn'" />
         <SettingsPanel v-else-if="store.mode === 'settings'" />
+        <AboutPanel v-else-if="store.mode === 'about'" />
         <PracticePanel v-else />
       </aside>
     </main>
@@ -86,6 +89,7 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref, watch, computed } from 'vue';
 import CubeView from './components/CubeView.vue';
+import AboutPanel from './components/AboutPanel.vue';
 import LearnPanel from './components/LearnPanel.vue';
 import MovePad from './components/MovePad.vue';
 import PracticePanel from './components/PracticePanel.vue';
@@ -102,6 +106,7 @@ const tabs = [
   { id: 'learn', label: 'Learn' },
   { id: 'practice', label: 'Practice' },
   { id: 'settings', label: 'Settings' },
+  { id: 'about', label: 'About' },
 ];
 const cube = ref(null);
 const viewport = ref(null);
