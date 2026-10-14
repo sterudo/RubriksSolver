@@ -24,7 +24,12 @@
 
     <main ref="mainEl" :style="leftWidth ? { '--left-w': leftWidth + 'px' } : null">
       <div class="stage">
-          <div class="viewport" ref="viewport" :style="{ height: viewportHeight + 'px' }">
+          <div class="viewport" ref="viewport" :style="{
+            height: viewportHeight + 'px',
+            '--mobile-header-height': mobileHeaderHeight + 'px',
+            '--mobile-bar-height': mobileBarHeight + 'px',
+            '--touch-frame-height': mobileFrameHeight ? mobileFrameHeight + 'px' : null,
+          }">
           <CubeView
             ref="cube"
             :n="store.n"
@@ -38,13 +43,13 @@
             :touchMode="touchMode"
             :touchLocked="store.playing || store.solving || store.quickSolveRequest || mobilePending"
             @paint="onPaint"
-            @layerturn="(m) => turn(m)"
+            @layerturn="(m, options) => turn(m, options)"
             @hovering="(v) => (hoveringSticker = v)"
             @zoom="(value) => (zoom = value)"
           />
           <div class="overlay">
             <div class="view-controls">
-              <button title="Reset camera" @click="cube?.resetView()">⟲ View</button>
+              <button class="reset-view" title="Reset camera" @click="cube?.resetView()">⟲ View</button>
               <button class="touch-mode-toggle" :aria-pressed="touchMode === 'move'"
                 :aria-label="`Move swipe mode ${touchMode === 'move' ? 'on' : 'off'}`"
                 @click="setTouchMode(touchMode === 'rotate' ? 'move' : 'rotate')">
@@ -78,7 +83,13 @@
             </div>
 
             <div class="resize-handle" @pointerdown.prevent="startResize"></div>
-            <div class="mobile-controls" role="toolbar" aria-label="Cube touch controls">
+            <label class="frame-height-control">
+              Height
+              <input type="range" :min="mobileMinHeight" :max="mobileMaxHeight" step="1"
+                :value="mobileFrameHeight ?? mobileMaxHeight" aria-label="Cube frame height"
+                @input="setMobileFrameHeight(Number($event.target.value))" />
+            </label>
+            <div ref="mobileBar" class="mobile-controls" role="toolbar" aria-label="Cube touch controls">
               <button :disabled="mobileBusy" @click="mobilePosition('reset')">Reset</button>
               <button :disabled="mobileBusy" @click="mobilePosition('scramble')">Scramble</button>
               <button :disabled="!canMobileStep" title="Compute a solution if needed and perform its next move"
@@ -169,6 +180,24 @@ function onOutsideMenu(event) {
 }
 const viewport = ref(null);
 const viewportHeight = ref(Math.max(300, Math.min(window.innerHeight * 0.62, 640)));
+const mobileBar = ref(null);
+const mobileHeaderHeight = ref(65);
+const mobileBarHeight = ref(90);
+const mobileFrameHeight = ref(null);
+const windowHeight = ref(window.innerHeight);
+const mobileMaxHeight = computed(() => Math.max(1,
+  Math.floor(windowHeight.value - mobileHeaderHeight.value - mobileBarHeight.value)));
+const mobileMinHeight = computed(() => Math.min(250, mobileMaxHeight.value));
+function setMobileFrameHeight(height) {
+  mobileFrameHeight.value = Math.min(mobileMaxHeight.value, Math.max(mobileMinHeight.value, height));
+}
+function onWindowResize() {
+  windowHeight.value = window.innerHeight;
+}
+watch(mobileMaxHeight, () => {
+  if (mobileFrameHeight.value !== null) setMobileFrameHeight(mobileFrameHeight.value);
+});
+let mobileLayoutObserver;
 const resizing = ref(false);
 const isFullscreen = ref(false);
 const showExitFullscreen = ref(false);
@@ -313,11 +342,12 @@ async function onGamepadAction(action, dt) {
 function startResize(e) {
   resizing.value = true;
   const startY = e.clientY;
-  const startH = viewportHeight.value;
+  const startH = viewport.value.getBoundingClientRect().height;
+  const mobile = window.matchMedia('(hover: none) and (pointer: coarse), (max-width: 600px)').matches;
   function onMove(ev) {
     const dy = ev.clientY - startY;
-    const newH = Math.max(300, startH + dy);
-    viewportHeight.value = newH;
+    if (mobile) setMobileFrameHeight(startH + dy);
+    else viewportHeight.value = Math.max(300, startH + dy);
   }
   function onUp() {
     resizing.value = false;
@@ -338,6 +368,13 @@ function onKey(e) {
 }
 
 onMounted(() => {
+  mobileLayoutObserver = new ResizeObserver(() => {
+    mobileHeaderHeight.value = headerEl.value.getBoundingClientRect().height;
+    mobileBarHeight.value = mobileBar.value.getBoundingClientRect().height;
+  });
+  mobileLayoutObserver.observe(headerEl.value);
+  mobileLayoutObserver.observe(mobileBar.value);
+  window.addEventListener('resize', onWindowResize);
   registerAnimator((move, next, speed) => cube.value.animate(move, next, speed));
   registerExploder(() => cube.value.explode());
   window.addEventListener('keydown', onKey);
@@ -355,6 +392,8 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKey);
   document.removeEventListener('pointerdown', onOutsideMenu);
   stopGamepad?.();
+  mobileLayoutObserver?.disconnect();
+  window.removeEventListener('resize', onWindowResize);
 });
 
 // Watch for starting play to auto-enter fullscreen when enabled

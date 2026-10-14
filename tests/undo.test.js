@@ -59,3 +59,14 @@ it('does not accept undo during playback, animation, solving or explosion', asyn
     store.store[flag] = false;
   }
 });
+
+it('speeds up swipe animations by 50% without changing other move speeds', async () => {
+  const animator = vi.fn().mockResolvedValue(undefined);
+  store.registerAnimator(animator);
+  store.store.speed = 2;
+  await store.turn('R', { speedMultiplier: 1.5 });
+  expect(animator.mock.calls[0][2]).toBe(3);
+  await store.turn('U');
+  expect(animator.mock.calls[1][2]).toBe(2);
+  expect(store.store.speed).toBe(2);
+});

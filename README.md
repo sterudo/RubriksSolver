@@ -81,19 +81,28 @@ Existing saved profiles remain unchanged. Browser storage is per origin and does
 On phones and small touch screens, a fixed bottom bar keeps **Reset**, **Scramble**,
 **Solve**, **Rotate**, and **Move** available while scrolling. The header keeps the logo
 and name visible, with Quick Solve beside them and navigation inside a hamburger menu. The cube
-display uses the full viewport width. Reset restores a solved
+display uses the full viewport width and defaults to filling the height above the bottom
+bar, adapting to the browser's visible height. Solved and valid-position badges are hidden
+on mobile (invalid-position errors remain visible). Reset restores a solved
 position; each **Solve** press performs one computed solution move, calculating the
 solution first if needed, without starting playback or forcing fullscreen.
 **Rotate** (the default) uses the existing free swipe/spin view rotation and pinch zoom.
 **Move** keeps the view still: start on a sticker and swipe along its row or column
-to turn that layer in the finger's direction. Each swipe produces one quarter turn;
+to turn that layer in the finger's direction, animated at 1.5× the selected speed.
+Each swipe produces one quarter turn;
 swipes on empty space do nothing, and two-finger gestures do not turn layers.
 On a 3×3, middle rows use the same opposite-outer-layer equivalent as mouse-wheel
 turns, preserving the stored cube orientation. Rotate/Move exit sticker painting.
 Mouse dragging and wheel controls are unchanged.
-The **Zoom** slider beside **View** works on desktop and mobile, and stays synced with
+The mobile-only **Zoom** slider beside **View** is vertically centered with the reset
+button, and stays synced with
 wheel, pinch and gamepad zoom. View resets also reset the slider.
 The Rotate/Move toggle below View stays synced with the bottom mode buttons.
+The mobile **Height** slider at the cube frame's upper-right adjusts it from 250px
+to the viewport height minus the header and bottom bar. If that available space is
+less than 250px, the frame fits the available space instead. Resizing/orientation
+changes update these limits. The initial mobile cube view is zoomed out to show
+the cube 20% smaller than the desktop default; Reset View restores that mobile view.
 
 ### Versioning
 Increment the patch version for each source commit with `npm version patch --no-git-tag-version`.

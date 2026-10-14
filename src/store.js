@@ -144,13 +144,13 @@ export function paint(slot, color = store.brush) {
 // Perform one move, animated. `move` may be several space-separated moves on opposite
 // faces that turn together (used for middle-slice turns). `fromSolution` keeps the
 // computed solution valid.
-export function turn(move, { animate = true, fromSolution = false, recordHistory = true } = {}) {
+export function turn(move, { animate = true, fromSolution = false, recordHistory = true, speedMultiplier = 1 } = {}) {
   if (store.exploding) return queue; // the cube is in pieces
   queue = queue.then(async () => {
     const next = move.split(' ').reduce((s, m) => applyMove(s, store.n, m), cubeState.value);
     store.busy = true;
     try {
-      if (animate && animator) await animator(move, next, store.speed);
+      if (animate && animator) await animator(move, next, store.speed * speedMultiplier);
     } finally {
       store.busy = false;
     }

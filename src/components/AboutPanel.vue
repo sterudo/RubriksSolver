@@ -29,10 +29,12 @@
 
     <h3>Main features</h3>
     <ul>
-      <li>2×2 and 3×3 cubes with a free drag-and-spin 3D view, pinch/wheel zoom and a synced zoom slider</li>
+      <li>2×2 and 3×3 cubes with a free drag-and-spin 3D view, pinch/wheel zoom and a synced mobile zoom slider</li>
       <li>Layer turns by mouse, wheel or keyboard, and undo for manual turns or solution moves</li>
-      <li>Mobile: edge-to-edge cube, hamburger navigation, header Quick Solve, always-visible Reset/Scramble/Solve controls
-        (Solve advances one computed move), and synced Rotate/Move controls for view rotation or sticker-row turns</li>
+      <li>Mobile: full-width cube with an adjustable-height slider and a 20% smaller starting view,
+        hamburger navigation, header Quick Solve,
+        always-visible Reset/Scramble/Solve controls (Solve advances one computed move), and synced Rotate/Move controls
+        for view rotation or 50% faster swipe turns</li>
       <li>Xbox-style gamepad controls with modifiers, view-relative face turns, configurable thresholds,
         named profiles, Save As, browser storage and JSON import/export</li>
       <li>Set up any position: paint stickers on the cube or the flat net, scramble, or import from two photos</li>

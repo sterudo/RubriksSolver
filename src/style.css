@@ -273,10 +273,13 @@ main {
   display: none;
 }
 .zoom-control {
-  display: flex;
+  display: none;
   align-items: center;
   gap: 4px;
   font-size: 12px;
+}
+.frame-height-control {
+  display: none;
 }
 .zoom-control input {
   width: 120px;
@@ -287,12 +290,59 @@ main {
   touch-action: pan-x;
 }
 @media (hover: none) and (pointer: coarse), (max-width: 600px) {
+  .frame-height-control {
+    position: absolute;
+    top: 10px;
+    right: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .frame-height-control input {
+    writing-mode: vertical-lr;
+    direction: rtl;
+    width: 44px;
+    height: 140px;
+    padding: 0;
+    margin: 0;
+    touch-action: none;
+  }
+  .viewport:fullscreen .frame-height-control {
+    display: none;
+  }
+  .overlay .reset-view {
+    min-height: 44px;
+  }
+  .zoom-control {
+    display: flex;
+    height: 44px;
+  }
+  .overlay .validity.ok,
+  .overlay .badge.ok {
+    display: none;
+  }
+  main .viewport {
+    height: var(--touch-frame-height, calc(100vh - var(--mobile-header-height) - var(--mobile-bar-height))) !important;
+    height: var(--touch-frame-height, calc(100dvh - var(--mobile-header-height) - var(--mobile-bar-height))) !important;
+    min-height: 0;
+  }
+  .viewport .cube-host {
+    min-height: 0;
+  }
+  main .viewport:fullscreen {
+    height: 100vh !important;
+    height: 100dvh !important;
+  }
   .touch-mode-toggle {
     display: block;
     min-height: 44px;
   }
   .overlay {
     flex-wrap: wrap;
+    right: 60px;
   }
   .overlay .validity {
     max-width: 100%;

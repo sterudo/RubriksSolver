@@ -97,7 +97,8 @@ function recolor(state) {
 }
 
 function resetView() {
-  const d = props.n === 2 ? 4.6 : 6.2;
+  const mobile = window.matchMedia('(hover: none) and (pointer: coarse), (max-width: 600px)').matches;
+  const d = (props.n === 2 ? 4.6 : 6.2) / (mobile ? 0.8 : 1);
   camera.up.set(0, 1, 0); // free rotation can leave the camera upside down
   camera.position.set(d * 0.75, d * 0.6, d);
   camera.lookAt(target);
@@ -213,7 +214,7 @@ function onViewPointerMove(e) {
         e.clientX - touchSwipe.x, e.clientY - touchSwipe.y);
       if (move) {
         touchSwipe = null;
-        emit('layerturn', move);
+        emit('layerturn', move, { speedMultiplier: 1.5 });
       }
     }
     return;
