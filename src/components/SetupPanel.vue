@@ -24,6 +24,13 @@
       <span class="note">Pick a colour, then click stickers in the 3D cube or the net.</span>
     </div>
 
+    <div class="row">
+      <label style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" v-model="store.showAllColorsOnHover" />
+        Show all colors on hover
+      </label>
+    </div>
+
     <div v-if="store.editing" class="palette">
       <button
         v-for="(hex, i) in FACE_COLOR_HEX"
