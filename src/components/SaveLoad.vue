@@ -6,7 +6,7 @@
       <input v-model="name" class="grow" :placeholder="defaultName" maxlength="40" @keydown.enter="save" />
       <button class="primary" @click="save">Save</button>
     </div>
-
+ 
     <ul v-if="saves.length" class="saved">
       <li v-for="s in saves" :key="s.id">
         <span class="title" :title="s.name">{{ s.name }}</span>

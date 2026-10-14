@@ -40,7 +40,7 @@
                 <li v-for="e in validity.errors" :key="e">{{ e }}</li>
               </ul>
             </div>
-
+ 
             <button v-if="isFullscreen && showExitFullscreen" class="exit-fullscreen" @click="exitFullscreen()">
               Exit Fullscreen mode
             </button>
@@ -51,12 +51,13 @@
 
             <div class="resize-handle" @pointerdown.prevent="startResize"></div>
           </div>
-        <MovePad />
-        <SaveLoad />
         <p class="keys">
           Drag to look around · wheel over a tile moves it up/down (Alt+wheel: left/right) · wheel elsewhere zooms ·
           keys R L U D F B (Shift = counter-clockwise).
-        </p>
+        </p>  
+        <MovePad />
+        <SaveLoad />
+        
       </div>
 
       <aside>

@@ -8,12 +8,10 @@
         <button :class="{ on: store.n === 2 }" @click="setSize(2)">2×2</button>
         <button :class="{ on: store.n === 3 }" @click="setSize(3)">3×3</button>
       </div>
-    </div>
-
-    <div class="row">
       <button @click="reset">Reset to solved</button>
       <button @click="doScramble">Random scramble</button>
     </div>
+    
     <p v-if="lastScramble" class="note">Scramble: <code>{{ lastScramble }}</code></p>
 
     <h3>Enter your own position</h3>
@@ -24,7 +22,7 @@
       <span class="note">Pick a colour, then click stickers in the 3D cube or the net.</span>
     </div>
 
-    <div class="row">
+    <div class="row" v-if="store.editing">
       <label style="display:flex;align-items:center;gap:8px;">
         <input type="checkbox" v-model="store.showAllColorsOnHover" @change="store.showAllColorsOnHover && (store.editing = true)" />
         Show all colors on hover
@@ -42,8 +40,11 @@
         <button class="swatch" :style="{ background: hex }" :title="FACE_COLOR_NAMES[i]" @click="pickColor(i)"></button>
       </span>
     </div>
-
-    <NetEditor :n="store.n" :state="cubeState" @paint="(slot) => store.editing && paint(slot)" />
+ 
+    <details class="net-editor" open>
+      <summary>Outline</summary>
+      <NetEditor :n="store.n" :state="cubeState" @paint="(slot) => store.editing && paint(slot)" />
+    </details>
 
     <details class="photos">
       <summary>Import from two photos</summary>

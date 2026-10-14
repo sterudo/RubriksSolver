@@ -51,13 +51,13 @@ nav button {
 nav button.on {
   background: var(--panel);
   border-color: var(--line);
-  color: var(--accent);
+  color: var(--accent); 
 }
 
 main {
   flex: 1;
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(340px, 0.8fr);
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 1.5fr);
   gap: 16px;
   padding: 16px;
 }
