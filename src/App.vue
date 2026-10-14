@@ -27,6 +27,8 @@
             :dramaSpeed="store.dramaSpeed"
             :rumble="store.countdown ? (4 - store.countdown) / 3 : 0"
             :hoverColors="hoverColors"
+            :touchMode="touchMode"
+            :touchLocked="store.playing || store.solving || store.quickSolveRequest || mobilePending"
             @paint="onPaint"
             @layerturn="(m) => turn(m)"
             @hovering="(v) => (hoveringSticker = v)"
@@ -55,6 +57,19 @@
             </div>
 
             <div class="resize-handle" @pointerdown.prevent="startResize"></div>
+            <div class="mobile-controls" role="toolbar" aria-label="Cube touch controls">
+              <button :disabled="mobileBusy" @click="mobilePosition('reset')">Reset</button>
+              <button :disabled="mobileBusy" @click="mobilePosition('scramble')">Scramble</button>
+              <button :disabled="!canQuickSolve || mobilePending" @click="mobileSolve">Solve</button>
+              <button :aria-pressed="touchMode === 'rotate'" :class="{ on: touchMode === 'rotate' }"
+                @click="setTouchMode('rotate')">Rotate</button>
+              <button :aria-pressed="touchMode === 'move'" :class="{ on: touchMode === 'move' }"
+                @click="setTouchMode('move')">Move</button>
+              <span class="mobile-hint" aria-live="polite">{{ touchMode === 'rotate'
+                ? 'Swipe to rotate the view; pinch to zoom.'
+                : 'Swipe a sticker row or column to turn it.' }}</span>
+              <span v-if="mobileError" class="status bad" role="alert">{{ mobileError }}</span>
+            </div>
           </div>
         <p class="keys">
           Drag to look around · wheel over a tile moves it up/down (Alt+wheel: left/right) · wheel elsewhere zooms ·
@@ -124,7 +139,36 @@ const resizing = ref(false);
 const isFullscreen = ref(false);
 const showExitFullscreen = ref(false);
 const hoveringSticker = ref(false);
+const touchMode = ref('rotate');
+const mobilePending = ref(false);
+const mobileError = ref('');
+const mobileBusy = computed(() => mobilePending.value || store.busy || store.playing || store.solving
+  || store.exploding || store.quickSolveRequest);
 const hoverColors = computed(() => store.mode === 'setup' && store.showAllColorsOnHover);
+
+function setTouchMode(mode) {
+  touchMode.value = mode;
+  store.editing = false;
+}
+
+async function mobilePosition(action) {
+  if (mobileBusy.value) return;
+  mobilePending.value = true;
+  mobileError.value = '';
+  store.editing = false;
+  try {
+    await (action === 'reset' ? reset() : scramble());
+  } catch (e) {
+    mobileError.value = `Could not ${action}: ${e.message}`;
+  } finally {
+    mobilePending.value = false;
+  }
+}
+
+function mobileSolve() {
+  mobileError.value = '';
+  quickSolve(false);
+}
 
 function onPaint(slot, color) {
   if (!store.editing) return;

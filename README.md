@@ -77,6 +77,18 @@ available; import is validated and requires Save or Save As to persist.
 To ship your own initial layout, export a profile and replace `src/gamepad-standard.json`.
 Existing saved profiles remain unchanged. Browser storage is per origin and does not sync.
 
+### Mobile cube controls
+On phones and small touch screens, a fixed bottom bar keeps **Reset**, **Scramble**,
+**Solve**, **Rotate**, and **Move** available while scrolling. Reset restores a solved
+position; Solve computes and plays the solution without forcing fullscreen.
+**Rotate** (the default) uses the existing free swipe/spin view rotation and pinch zoom.
+**Move** keeps the view still: start on a sticker and swipe along its row or column
+to turn that layer in the finger's direction. Each swipe produces one quarter turn;
+swipes on empty space do nothing, and two-finger gestures do not turn layers.
+On a 3×3, middle rows use the same opposite-outer-layer equivalent as mouse-wheel
+turns, preserving the stored cube orientation. Rotate/Move exit sticker painting.
+Mouse dragging and wheel controls are unchanged.
+
 ### Enter a position from two photos
 1. Photo 1: look straight at a corner of the cube. Photo 2: flip the cube over "like a pancake" (about the photo's horizontal axis) so the opposite corner faces the camera.
 2. When a photo is uploaded the cube **outline is found automatically** (checkbox, on by default; **✨ Find the cube** re-runs it per photo). This is not an AI guess of six vertices (small models are unreliable at that) but a **model-based fit**: the cube is treated as a rigid object with equal edges and the known N×N grid, seen through a pinhole camera (position, distance, 3D rotation and focal length are the unknowns), so converging, skewed edges are explained by perspective. The fit searches every orientation and rewards poses whose sticker centres land on coloured/white patches, whose grid lines fall on the black gaps (with a sticker on both sides) and whose faces end in a dark rim – i.e. it works from the stickers and gaps outward, rejects wrong grid sizes, and penalises coloured pixels the outline leaves unexplained. A final step lets the 7 handles deviate slightly to absorb lens distortion. It runs in a web worker (a few seconds). A **local model** (e.g. Gemma in LM Studio) or **Gemini**, when configured in **Settings**, is only used as a locator: it returns the cube's bounding box, the fit is repeated inside that box, and the better of the two fits is kept. If no convincing fit is found, the AI box (or the default outline) is used and you place the handles yourself. Drag the 7 handles to fine-tune; the dots show where colours are read.

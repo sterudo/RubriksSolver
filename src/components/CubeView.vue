@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { FACE_COLOR_HEX, FACE_NORMALS, FACES, getSpec } from '../core/cube.js';
 import { relativeFaces } from '../core/gamepad.js';
+import { layerTurn, swipeTurn } from '../core/swipe.js';
 
 const props = defineProps({
   n: { type: Number, required: true },
@@ -18,6 +19,8 @@ const props = defineProps({
   rumble: { type: Number, default: 0 },
   dramaSpeed: { type: Number, default: 0.32 },
   hoverColors: { type: Boolean, default: false },
+  touchMode: { type: String, default: 'rotate' },
+  touchLocked: { type: Boolean, default: false },
 });
 const emit = defineEmits(['paint', 'layerturn', 'hovering']);
 
@@ -117,6 +120,8 @@ function resize() {
 // A full canvas height of dragging is one full turn, as with orbit controls.
 const spin = { vx: 0, vy: 0, dragging: false, lastX: 0, lastY: 0, lastT: 0 };
 const pointers = new Map();
+let touchSwipe = null;
+let touchGesture = false;
 let pinchDistance = 0;
 const _q = new THREE.Quaternion();
 const _right = new THREE.Vector3();
@@ -149,6 +154,31 @@ function zoomBy(factor) {
 function onViewPointerDown(e) {
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   renderer.domElement.setPointerCapture?.(e.pointerId);
+  if (e.pointerType === 'touch' && props.touchMode === 'move') {
+    touchGesture = true;
+    spin.dragging = false;
+    spin.vx = 0;
+    spin.vy = 0;
+    touchSwipe = null;
+    if (pointers.size === 1 && !props.locked && !props.touchLocked && !props.paintable && !animating) {
+      camera.updateMatrixWorld();
+      const hit = pickSticker(e.clientX, e.clientY);
+      if (hit) {
+        const slot = hit.object.userData.slot;
+        const normalAxis = spec.stickers[slot].normal.findIndex((v) => v !== 0);
+        const origin = hit.point.clone().project(camera);
+        const candidates = [0, 1, 2].filter((axis) => axis !== normalAxis).map((axis) => {
+          const vector = new THREE.Vector3().setComponent(axis, 1);
+          const tangent = vector.cross(hit.point);
+          const end = hit.point.clone().addScaledVector(tangent, 0.01).project(camera);
+          return { axis, x: (end.x - origin.x) * renderer.domElement.clientWidth,
+            y: -(end.y - origin.y) * renderer.domElement.clientHeight };
+        });
+        touchSwipe = { pointerId: e.pointerId, x: e.clientX, y: e.clientY, slot, candidates };
+      }
+    }
+    return;
+  }
   if (pointers.size === 1) {
     Object.assign(spin, { dragging: true, lastX: e.clientX, lastY: e.clientY, lastT: performance.now(), vx: 0, vy: 0 });
   } else if (pointers.size === 2) {
@@ -161,6 +191,18 @@ function onViewPointerDown(e) {
 function onViewPointerMove(e) {
   if (!pointers.has(e.pointerId)) return;
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (touchGesture) {
+    if (touchSwipe && pointers.size === 1 && touchSwipe.pointerId === e.pointerId) {
+      if (props.locked || props.touchLocked || props.paintable || animating) { touchSwipe = null; return; }
+      const move = swipeTurn(spec, touchSwipe.slot, touchSwipe.candidates,
+        e.clientX - touchSwipe.x, e.clientY - touchSwipe.y);
+      if (move) {
+        touchSwipe = null;
+        emit('layerturn', move);
+      }
+    }
+    return;
+  }
   if (pointers.size === 2) {
     const [a, b] = [...pointers.values()];
     const d = Math.hypot(a.x - b.x, a.y - b.y);
@@ -182,8 +224,11 @@ function onViewPointerMove(e) {
 
 function onViewPointerUp(e) {
   pointers.delete(e.pointerId);
-  renderer.domElement.releasePointerCapture?.(e.pointerId);
+  if (renderer.domElement.hasPointerCapture?.(e.pointerId)) renderer.domElement.releasePointerCapture(e.pointerId);
+  touchSwipe = null;
+  if (e.type === 'pointercancel') { downAt = null; spin.vx = 0; spin.vy = 0; }
   if (pointers.size === 0) {
+    touchGesture = false;
     spin.dragging = false;
     // a drag that ended while standing still must not keep spinning
     if (performance.now() - spin.lastT > 80) {
@@ -591,6 +636,7 @@ function onPointerDown(e) {
   downAt = { x: e.clientX, y: e.clientY };
 }
 function onPointerUp(e) {
+  if (e.type === 'pointercancel' || props.locked) { downAt = null; return; }
   if (!props.paintable || !downAt) return;
   const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y);
   downAt = null;
@@ -608,7 +654,6 @@ function onPointerUp(e) {
 
 // Wheel over a sticker turns the layer holding it: the sticker moves up/down on screen,
 // or left/right with Alt. Scrolling down = down / right. Elsewhere the wheel zooms.
-const LAYER_LETTERS = [['L', 'R'], ['D', 'U'], ['B', 'F']];
 let wheelAccum = 0;
 
 function layerMoveForWheel(slot, dir, horizontal) {
@@ -627,12 +672,7 @@ function layerMoveForWheel(slot, dir, horizontal) {
   const velocity = axis.clone().cross(p); // direction of motion for a positive turn about +axis
   const towardsWanted = horizontal ? velocity.dot(right) : -velocity.dot(up);
   const sigma = (towardsWanted >= 0 ? 1 : -1) * dir; // +1 = counter-clockwise seen from +axis
-  const c = spec.cubies[st.cubie].pos[k];
-  const [neg, pos] = LAYER_LETTERS[k];
-  if (c === spec.m) return pos + (sigma > 0 ? "'" : '');
-  if (c === -spec.m) return neg + (sigma > 0 ? '' : "'");
-  // Middle slice: the two outer layers turn the opposite way (same pattern, orientation kept).
-  return `${pos}${sigma > 0 ? '' : "'"} ${neg}${sigma > 0 ? "'" : ''}`;
+  return layerTurn(spec, slot, k, sigma);
 }
 
 function onWheel(e) {
@@ -679,6 +719,7 @@ onMounted(() => {
   renderer.domElement.addEventListener('wheel', onViewWheel, { passive: false });
   renderer.domElement.addEventListener('pointerdown', onPointerDown);
   renderer.domElement.addEventListener('pointerup', onPointerUp);
+  renderer.domElement.addEventListener('pointercancel', onPointerUp);
   // Capture phase on the host so a wheel over a sticker turns a layer instead of zooming.
   host.value.addEventListener('wheel', onWheel, { capture: true, passive: false });
   build();
@@ -709,6 +750,12 @@ watch(
   },
 );
 watch(() => [props.hoverColors, props.paintable, props.locked], refreshHover);
+watch(() => props.touchMode, () => {
+  touchSwipe = null;
+  spin.dragging = false;
+  spin.vx = 0;
+  spin.vy = 0;
+});
 
 function gamepadView(action, dt) {
   if (!camera || !renderer) return;
