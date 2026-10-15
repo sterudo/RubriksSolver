@@ -71,7 +71,8 @@ nav button.on {
   color: var(--accent); 
 }
 
-button.reset-view {
+button.reset-view,
+button.undo-view {
   cursor: pointer;
   padding: 3px;
   padding-left: 8px;
@@ -275,7 +276,6 @@ main {
 }
 .view-controls {
   display: flex;
-  flex-direction: column;
   gap: 4px;
 }
 .touch-mode-toggle {
@@ -299,6 +299,12 @@ main {
   touch-action: pan-x;
 }
 @media (hover: none) and (pointer: coarse), (max-width: 600px) {
+  .view-controls {
+    flex-direction: column;
+  }
+  .undo-view {
+    display: none;
+  }
   .frame-height-control {
     position: absolute;
     top: 10px;

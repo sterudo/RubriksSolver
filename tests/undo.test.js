@@ -10,7 +10,9 @@ beforeEach(async () => {
 afterEach(() => vi.unstubAllGlobals());
 
 it('undoes manual moves in reverse order, including simultaneous slice-equivalent moves', async () => {
+  expect(store.canUndo.value).toBe(false);
   await store.turn('R', { animate: false });
+  expect(store.canUndo.value).toBe(true);
   await store.turn("U D'", { animate: false });
   await store.undo();
   expect(store.cubeState.value).toEqual(applyMoves(solvedState(3), 3, ['R']));
@@ -18,6 +20,7 @@ it('undoes manual moves in reverse order, including simultaneous slice-equivalen
   await store.undo();
   expect(store.cubeState.value).toEqual(solvedState(3));
   expect(store.store.moveCount).toBe(0);
+  expect(store.canUndo.value).toBe(false);
   await store.undo();
   expect(store.cubeState.value).toEqual(solvedState(3));
 });
@@ -32,6 +35,7 @@ it('clears history after reset, scramble, imported positions and painting', asyn
     await store.loadPosition(3, solvedState(3));
     await store.turn('R', { animate: false });
     await change();
+    expect(store.canUndo.value).toBe(false);
     const snapshot = Uint8Array.from(store.cubeState.value);
     await store.undo();
     expect(store.cubeState.value).toEqual(snapshot);
@@ -42,10 +46,12 @@ it('uses solution rewind instead of manual undo while following a solution', asy
   await store.turn('R', { animate: false });
   store.store.solution = { stages: [{ steps: [{ moves: ["R'"] }] }], moves: ["R'"] };
   await store.stepForward();
+  expect(store.canUndo.value).toBe(true);
   expect(store.store.pointer).toBe(1);
   expect(store.cubeState.value).toEqual(solvedState(3));
   await store.undo();
   expect(store.store.pointer).toBe(0);
+  expect(store.canUndo.value).toBe(false);
   expect(store.cubeState.value).toEqual(applyMoves(solvedState(3), 3, ['R']));
   expect(store.store.solution).not.toBeNull();
 });
@@ -54,9 +60,11 @@ it('does not accept undo during playback, animation, solving or explosion', asyn
   await store.turn('R', { animate: false });
   for (const flag of ['playing', 'busy', 'solving', 'exploding']) {
     store.store[flag] = true;
+    expect(store.canUndo.value).toBe(false);
     await store.undo();
     expect(store.cubeState.value).toEqual(applyMoves(solvedState(3), 3, ['R']));
     store.store[flag] = false;
+    expect(store.canUndo.value).toBe(true);
   }
 });
 

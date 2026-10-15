@@ -34,6 +34,14 @@ npm run build      # static site in dist/
 
 Drag the cube to rotate it freely in every direction - there is no limit horizontally or vertically, so you can spin it over the top and underneath (the **⟲ View** button restores the default view). Scroll the mouse wheel over a tile to turn the layer holding it so the tile moves up/down on screen (scroll down = down); hold `Alt` to move it left/right instead. Scrolling anywhere else zooms. Middle-slice turns are shown as the two outer layers turning the opposite way (same position, orientation kept). Keyboard: `R L U D F B` turn a face, `Shift` makes it counter-clockwise.
 
+On desktop, **Undo** sits beside **View** in the cube frame's top-left corner. It undoes
+the last manual turn or rewinds one solution move, and is disabled when no move can be
+undone or the cube is busy or being painted. Click the cube (or Tab to its frame) to
+focus it, then press `Backspace` to undo. The shortcut ignores text fields, modifier
+keys and held-key repeats; it is inactive outside the cube frame. Browser Back keeps
+its normal navigation behavior because browsers do not reliably expose it as a
+cancelable page event. Undo does not restore resets, scrambles, painting or imports.
+
 ### Save and load positions
 The **Save / load position** panel under the cube is available on every tab. You can save the current position under a name (kept in the browser's `localStorage`, loadable at any time even across 2×2/3×3), export it to a `.cube.json` file and import it again, or copy/paste it as a plain code. The code is the standard facelet string in the order U R F D L B (54 letters for a 3×3, 24 for a 2×2), e.g. a solved 3×3 is `UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB`.
 

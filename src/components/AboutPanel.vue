@@ -30,7 +30,8 @@
     <h3>Main features</h3>
     <ul>
       <li>2x2 and 3x3 cubes with a free drag-and-spin 3D view, pinch/wheel zoom and a synced mobile zoom slider</li>
-      <li>Layer turns by mouse, wheel, gamepad, touch or keyboard, and undo for manual turns or solution moves</li>
+      <li>Layer turns by mouse, wheel, gamepad, touch or keyboard, and undo for manual turns or solution moves;
+        desktop Undo beside View, or Backspace while the cube frame is focused</li>
       <li>Mobile: full-width cube with an adjustable-height slider and a 20% smaller starting view,
         hamburger navigation, header Quick Solve,
         always-visible Reset/Scramble/Solve controls (Solve advances one computed move), and synced Rotate/Move controls

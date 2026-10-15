@@ -40,7 +40,7 @@ let animator = null;
 let exploder = null;
 let queue = Promise.resolve();
 const listeners = new Set();
-const manualHistory = [];
+const manualHistory = reactive([]);
 
 export function registerAnimator(fn) {
   animator = fn;
@@ -58,6 +58,8 @@ export function onMove(fn) {
 export const validity = computed(() => analyzeState(cubeState.value, store.n));
 export const solved = computed(() => isSolved(cubeState.value, store.n));
 export const stageProgress = computed(() => progress(cubeState.value, store.n));
+export const canUndo = computed(() => !store.busy && !store.playing && !store.solving && !store.exploding
+  && (store.solution ? store.pointer > 0 : manualHistory.length > 0));
 
 // "Extra, extra drama": 3-2-1, then the cube explodes and re-forms. Anything the user does
 // during the countdown (a move, a reset, a new position, rewinding ...) calls cancelFinale().

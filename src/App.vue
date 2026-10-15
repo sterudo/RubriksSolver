@@ -24,7 +24,8 @@
 
     <main ref="mainEl" :style="leftWidth ? { '--left-w': leftWidth + 'px' } : null">
       <div class="stage">
-          <div class="viewport" ref="viewport" :style="{
+          <div class="viewport" ref="viewport" tabindex="0" aria-label="Interactive cube"
+            @pointerdown="focusCube" :style="{
             height: viewportHeight + 'px',
             '--mobile-header-height': mobileHeaderHeight + 'px',
             '--mobile-bar-height': mobileBarHeight + 'px',
@@ -50,6 +51,9 @@
           <div class="overlay">
             <div class="view-controls">
               <button class="reset-view" title="Reset camera" @click="cube?.resetView()">⟲ View</button>
+              <button class="undo-view" title="Undo last move (Backspace when cube is focused)"
+                aria-keyshortcuts="Backspace" :disabled="!canUndo || mobileBusy || store.editing"
+                @click="undo()">Undo</button>
               <button class="touch-mode-toggle" :aria-pressed="touchMode === 'move'"
                 :aria-label="`Move swipe mode ${touchMode === 'move' ? 'on' : 'off'}`"
                 @click="setTouchMode(touchMode === 'rotate' ? 'move' : 'rotate')">
@@ -106,7 +110,7 @@
           </div>
         <p class="keys">
           Drag to look around · wheel over a tile moves it up/down (Alt+wheel: left/right) · wheel elsewhere zooms ·
-          keys R L U D F B (Shift = counter-clockwise).
+          keys R L U D F B (Shift = counter-clockwise) · Backspace undoes when the cube is focused.
         </p>  
         <MovePad />
         <SaveLoad />
@@ -152,9 +156,10 @@ import SetupPanel from './components/SetupPanel.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import SolvePanel from './components/SolvePanel.vue';
 import { computeSolution, cubeState, paint, registerAnimator, registerExploder, reset, scramble,
-  solved, stepForward, store, turn, undo, validity } from './store.js';
+  canUndo, solved, stepForward, store, turn, undo, validity } from './store.js';
 import { FACE_COLOR_HEX } from './core/cube.js';
 import { CONTINUOUS_ACTIONS } from './core/gamepad.js';
+import { handleUndoKey } from './core/keyboard.js';
 import { gamepad, startGamepad } from './gamepad.js';
 
 const tabs = [
@@ -358,9 +363,17 @@ function startResize(e) {
   window.addEventListener('pointerup', onUp);
 }
 
+function focusCube(e) {
+  if (e.target === viewport.value || e.target?.tagName === 'CANVAS') {
+    viewport.value?.focus({ preventScroll: true });
+  }
+}
+
 function onKey(e) {
+  if (handleUndoKey(e, viewport.value, canUndo.value && !mobileBusy.value && !store.editing, undo)) return;
   const tag = e.target?.tagName;
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target?.isContentEditable
+    || e.ctrlKey || e.metaKey || e.altKey) return;
   const face = e.key.toUpperCase();
   if (!'UDLRFB'.includes(face) || face.length !== 1 || store.editing) return;
   e.preventDefault();
