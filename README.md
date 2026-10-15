@@ -24,6 +24,32 @@ npm test           # engine, solver and photo-geometry tests
 npm run build      # static site in dist/
 ```
 
+Use Node.js 20.19+ (Node.js 24 recommended) for the PWA build tooling.
+
+## Install and use offline
+The app is a Progressive Web App (PWA). On a supported desktop or Android browser,
+use the browser's **Install app** action. On iPhone/iPad, open it in Safari and use
+**Share > Add to Home Screen**. Installation support and labels vary by browser.
+HTTPS is required, except for localhost development/preview.
+
+Open the app online once and wait for **Ready for offline use** before going offline.
+The cube, solvers, lessons, practice, photo processing and built-in tutor then work
+without a network connection. Gemini and remote AI providers still need connectivity;
+local AI needs a reachable local server. Settings, keys and saved positions stay in
+localStorage, not the service worker cache; export a backup before moving browsers
+or devices, and do not assume an installed app shares storage with every browser.
+
+New versions show an **Update and reload** prompt rather than interrupting an active
+session. Save your position and any gamepad draft first; reloading loses unsaved work.
+**Later** leaves the current version running. Updates are checked when opening the app.
+Clearing site data removes offline files and saved settings.
+
+The production build precaches local app assets, including the photo-fitting worker,
+with `vite-plugin-pwa`/Workbox. API responses and API keys are not cached by the service
+worker. Manifest URLs and worker scope are relative so GitHub Pages subpaths and
+JBoss deployment folders continue to work. PWA caching is disabled in `npm run dev`;
+use `npm run build` followed by `npm run preview` to try installation and offline use.
+
 ## The app
 | Tab | What it does |
 | --- | --- |

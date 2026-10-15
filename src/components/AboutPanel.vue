@@ -29,6 +29,8 @@
 
     <h3>Main features</h3>
     <ul>
+      <li>Installable PWA for desktop and mobile, with offline cube solving, lessons and built-in tutor,
+        plus an update prompt that lets you finish before reloading</li>
       <li>One-file settings backup and tolerant restore, including API keys, saved positions,
         gamepad profiles and all saved app preferences, including left/right mouse drag swapping,
         playback speed and camera rotation speed</li>

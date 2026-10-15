@@ -1,5 +1,6 @@
 <template>
   <div class="app">
+    <PwaStatus />
     <header ref="headerEl" @keydown.esc="closeMobileMenu(true)">
       <h1>
         <a class="logo" href="https://github.com/sterudo/RubriksSolver" target="_blank" rel="noopener" title="Open the repository on GitHub">🧊 Rubik's Solver</a>
@@ -155,6 +156,7 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref, watch, computed } from 'vue';
 import CubeView from './components/CubeView.vue';
+import PwaStatus from './components/PwaStatus.vue';
 import AboutPanel from './components/AboutPanel.vue';
 import LearnPanel from './components/LearnPanel.vue';
 import MovePad from './components/MovePad.vue';
