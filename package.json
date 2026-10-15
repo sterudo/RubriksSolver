@@ -1,6 +1,6 @@
 {
   "name": "rubiks-solver",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": true,
   "type": "module",
   "description": "Learn, teach and solve 2x2 and 3x3 Rubik's cubes in the browser",
