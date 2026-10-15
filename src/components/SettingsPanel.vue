@@ -1,4 +1,5 @@
 <template>
+  
   <details class="panel">
     <summary>Tutor / AI Configuration</summary>
     <p class="note">
@@ -71,6 +72,30 @@
   </details>
   <br>
   <GamepadSettings />
+
+  <br>
+  <details open>
+
+    <summary>Settings backup</summary>
+    <p class="note">Export all saved app settings, including AI API keys, saved cube positions,
+      gamepad profiles and preferences, to one JSON file.</p>
+    <p class="status bad">The file contains API keys in plain text. Keep it private and only import files you trust.</p>
+    <p class="note">Import replaces matching stored settings and lists, leaves missing settings untouched,
+      and skips unsupported or invalid entries. Reload afterward to apply restored settings.
+      Unsaved gamepad drafts and the current unsaved cube position are not included.</p>
+    <div class="row">
+      <button :disabled="backupBusy" @click="exportBackup">Export all settings</button>
+      <button :disabled="backupBusy" @click="backupFile.click()">Import all settings</button>
+      <input ref="backupFile" type="file" accept=".json,application/json" hidden @change="importBackup" />
+      <button v-if="backupImported" @click="reloadSettings">Reload to apply</button>
+    </div>
+    <p v-if="backupMessage" :class="['status', backupError ? 'bad' : 'ok']" role="status">{{ backupMessage }}</p>
+    <details v-if="backupDetails.length">
+      <summary>Skipped entries and warnings</summary>
+      <ul><li v-for="(detail, index) in backupDetails" :key="index">{{ detail }}</li></ul>
+    </details>
+  </details>
+  <br>
 </template>
 
 <script setup>
@@ -79,6 +104,57 @@ import { aiSettings } from '../aiSettings.js';
 import { GEMINI_MODELS, testGemini, testLocal } from '../core/explain.js';
 import TestResult from './TestResult.vue';
 import GamepadSettings from './GamepadSettings.vue';
+import { exportSettings, importSettings } from '../core/settingsBackup.js';
+
+const backupFile = ref(null);
+const backupBusy = ref(false);
+const backupImported = ref(false);
+const backupMessage = ref('');
+const backupError = ref(false);
+const backupDetails = ref([]);
+
+function exportBackup() {
+  backupDetails.value = [];
+  try {
+    const data = exportSettings();
+    const url = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `rubiks-solver-settings-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    backupMessage.value = 'Exported all saved app settings, including API keys. Keep the file private.';
+    backupError.value = false;
+  } catch (e) {
+    backupMessage.value = `Could not export settings: ${e.message}`;
+    backupError.value = true;
+  }
+}
+
+async function importBackup(event) {
+  const file = event.target.files?.[0];
+  event.target.value = '';
+  if (!file || !window.confirm('Import this settings backup? Matching stored settings and lists will be replaced, including API keys. Reload afterward to apply.')) return;
+  backupBusy.value = true;
+  backupDetails.value = [];
+  try {
+    const report = importSettings(await file.text());
+    backupImported.value ||= report.imported > 0;
+    backupDetails.value = report.details;
+    backupError.value = report.imported === 0;
+    backupMessage.value = `Restored ${report.imported} storage entries; skipped ${report.skipped} entries or fields.`
+      + (backupImported.value ? ' Reload to apply before changing other settings; unsaved work will be lost on reload.' : '');
+  } catch (e) {
+    backupMessage.value = `Could not import settings: ${e.message}`;
+    backupError.value = true;
+  } finally {
+    backupBusy.value = false;
+  }
+}
+
+function reloadSettings() {
+  if (window.confirm('Reload to apply imported settings? Unsaved cube changes and gamepad drafts will be lost.')) window.location.reload();
+}
 
 const showKey = ref(false);
 const gemini = reactive({ busy: false, result: null });

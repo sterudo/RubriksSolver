@@ -1,6 +1,33 @@
 import { expect, it } from 'vitest';
 import { getSpec } from '../src/core/cube.js';
-import { layerTurn, swipeTurn } from '../src/core/swipe.js';
+import { layerTurn, pointerDragMode, swipeTurn } from '../src/core/swipe.js';
+
+it('maps desktop right drags to layer turns and optionally swaps left and right', () => {
+  const options = { desktop: true, swapMouseButtons: false, touchMode: 'rotate', paintable: false };
+  expect(pointerDragMode('mouse', 0, options)).toBe('rotate');
+  expect(pointerDragMode('mouse', 2, options)).toBe('move');
+  expect(pointerDragMode('mouse', 1, options)).toBeNull();
+  options.swapMouseButtons = true;
+  expect(pointerDragMode('mouse', 0, options)).toBe('move');
+  expect(pointerDragMode('mouse', 2, options)).toBe('rotate');
+  expect(pointerDragMode('mouse', 1, options)).toBeNull();
+});
+
+it('preserves touch modes, non-desktop mouse behavior and left-button painting', () => {
+  for (const swapMouseButtons of [false, true]) {
+    for (const touchMode of ['rotate', 'move']) {
+      const options = { desktop: true, swapMouseButtons, touchMode, paintable: false };
+      expect(pointerDragMode('touch', 0, options)).toBe(touchMode);
+      expect(pointerDragMode('pen', 0, options)).toBe('rotate');
+      expect(pointerDragMode('mouse', 0, { ...options, desktop: false })).toBe('rotate');
+      expect(pointerDragMode('mouse', 1, { ...options, desktop: false })).toBe('rotate');
+      expect(pointerDragMode('mouse', 2, { ...options, desktop: false })).toBe('rotate');
+      expect(pointerDragMode('mouse', 0, { ...options, paintable: true })).toBe('rotate');
+      expect(pointerDragMode('mouse', 1, { ...options, paintable: true })).toBeNull();
+      expect(pointerDragMode('mouse', 2, { ...options, paintable: true })).toBeNull();
+    }
+  }
+});
 
 it('requires a deliberate swipe and chooses the closest projected tangent', () => {
   const spec = getSpec(3);

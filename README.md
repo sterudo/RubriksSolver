@@ -36,11 +36,30 @@ Drag the cube to rotate it freely in every direction - there is no limit horizon
 
 On desktop, **Undo** sits beside **View** in the cube frame's top-left corner. It undoes
 the last manual turn or rewinds one solution move, and is disabled when no move can be
-undone or the cube is busy or being painted. Click the cube (or Tab to its frame) to
+undone or the cube is busy. In **Paint stickers** mode, the same button instead restores
+the previous colour of the last painted sticker (on the 3D cube or flat net), one
+paint action at a time, without undoing turns. Painting a sticker its existing colour
+or clicking a locked 3x3 centre does not add an undo step. Paint history is cleared
+by turns, computing a solution, resets, scrambles, size changes and imported positions.
+Click the cube (or Tab to its frame) to
 focus it, then press `Backspace` to undo. The shortcut ignores text fields, modifier
 keys and held-key repeats; it is inactive outside the cube frame. Browser Back keeps
 its normal navigation behavior because browsers do not reliably expose it as a
-cancelable page event. Undo does not restore resets, scrambles, painting or imports.
+cancelable page event. Undo does not restore resets, scrambles or imports.
+
+Desktop mouse controls also support swipe turns: hold the **right mouse button** on a
+sticker and drag along its row or column. Each drag produces one quarter turn at the
+selected animation speed, using the same direction and middle-slice rules as touch
+swipes. Starting on empty space does nothing. **Swap left and right mouse drags**,
+below the cube frame, makes left-drag turn layers and right-drag rotate the view.
+The desktop cube canvas suppresses the context menu so right-drag stays uninterrupted.
+Left-click painting still works normally in painting mode. The checkbox and new mouse
+mapping are desktop-only; mobile Rotate/Move, pinch and swipe controls are unchanged.
+
+Switching from another tab to **Solve** automatically finishes sticker painting and
+finds a solution if the position is valid, without starting playback. Invalid positions
+show their validation errors instead. Clicking the already-active Solve tab does not
+restart the solution.
 
 ### Save and load positions
 The **Save / load position** panel under the cube is available on every tab. You can save the current position under a name (kept in the browser's `localStorage`, loadable at any time even across 2×2/3×3), export it to a `.cube.json` file and import it again, or copy/paste it as a plain code. The code is the standard facelet string in the order U R F D L B (54 letters for a 3×3, 24 for a 2×2), e.g. a solved 3×3 is `UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB`.
@@ -75,7 +94,7 @@ held; other actions occur once per main-input press. Release and press again to 
 modifier on a held main input. Input pauses during binding capture, text entry, and loss of
 page focus; release all controls after reconnecting, switching profiles, or returning to
 the page. Cube commands are ignored during animation, solving, playback, or sticker painting.
-Undo does not restore scrambles, resets, painting, or imported positions.
+Gamepad undo does not restore scrambles, resets, painting, or imported positions.
 
 Draft changes take effect immediately. **Save / Rename** updates the selected profile;
 **Save As** creates a new uniquely named profile. Profiles and the selected profile are
@@ -125,6 +144,22 @@ this version at build time; keep its feature list current when adding user-facin
 5. Red, orange and yellow are the colours most often confused, so after reading, a **hue strip with two sliders** appears (*Red | Orange* and *Orange | Yellow*). The cutoffs start where they fall between the measured colours (3×3: between the red, orange and yellow centres; 2×2: at the two biggest gaps between the 12 warm stickers). Drag them to move stickers between the three colours; the cube updates live, and **Auto** restores the automatic values.
 
 ### Tutor / AI ("natural expression")
+In **Settings**, **Export all settings** downloads one JSON backup of all app-owned
+localStorage entries, including API keys, saved positions, saved gamepad profiles
+and persisted camera/photo preferences. Left/right mouse drag swapping, playback
+speed and camera rotation speed persist across reloads and are included in backups.
+Temporary rewind/fast-forward speed is not saved. Quick Solve's playback and rotation
+speed changes are saved like other preference changes. **The backup contains API keys in plain
+text: keep it private and only import trusted files.** Unrelated sites' or other
+apps' storage, unsaved gamepad drafts and the current unsaved cube are not included.
+
+**Import all settings** tolerantly restores supported data, reports skipped entries
+and fields, and leaves missing settings untouched. Matching stored lists are replaced,
+not merged; valid saved positions and profiles are retained even if other entries
+in the same list are invalid. Supported AI fields are merged with existing settings.
+Malformed JSON is rejected without changing storage. After importing, use **Reload
+to apply** before editing settings; reloading discards unsaved cube changes and drafts.
+
 The built-in tutor works offline. The **Settings** tab (also linked from the Tutor box) configures an AI provider; everything is saved automatically in the browser's `localStorage`:
 - **Gemini API** - paste an API key (sent only to Google's Gemini API) and pick a model: `gemini-2.5-flash`, `gemini-3.1-flash-lite`, `gemini-3.5-flash-lite` or `gemini-3.6-flash`. **Test connection** checks the key and model.
 - **Local model** - any OpenAI-compatible server (LM Studio, Ollama, llama.cpp) running Gemma, e.g. `http://localhost:1234/v1`. Browsers only accept replies from servers that allow CORS: in LM Studio turn on *Developer → Server Settings → Enable CORS*; for Ollama set `OLLAMA_ORIGINS=*`. **Test local model** tells a stopped server apart from one that is running but blocking the browser.

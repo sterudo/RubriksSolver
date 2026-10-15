@@ -281,6 +281,13 @@ main {
 .touch-mode-toggle {
   display: none;
 }
+.mouse-drag-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 13px;
+}
 .zoom-control {
   display: none;
   align-items: center;
@@ -299,6 +306,9 @@ main {
   touch-action: pan-x;
 }
 @media (hover: none) and (pointer: coarse), (max-width: 600px) {
+  .mouse-drag-control {
+    display: none;
+  }
   .view-controls {
     flex-direction: column;
   }

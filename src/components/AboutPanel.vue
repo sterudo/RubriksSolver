@@ -29,9 +29,15 @@
 
     <h3>Main features</h3>
     <ul>
+      <li>One-file settings backup and tolerant restore, including API keys, saved positions,
+        gamepad profiles and all saved app preferences, including left/right mouse drag swapping,
+        playback speed and camera rotation speed</li>
       <li>2x2 and 3x3 cubes with a free drag-and-spin 3D view, pinch/wheel zoom and a synced mobile zoom slider</li>
-      <li>Layer turns by mouse, wheel, gamepad, touch or keyboard, and undo for manual turns or solution moves;
+      <li>Layer turns by mouse, wheel, gamepad, touch or keyboard, and undo for manual turns, solution moves
+        or individual sticker changes in Paint stickers mode;
         desktop Undo beside View, or Backspace while the cube frame is focused</li>
+      <li>Desktop right-button sticker swipes turn layers; a checkbox below the cube swaps left/right
+        layer-turn and view-rotation drags without changing touch controls or left-click painting</li>
       <li>Mobile: full-width cube with an adjustable-height slider and a 20% smaller starting view,
         hamburger navigation, header Quick Solve,
         always-visible Reset/Scramble/Solve controls (Solve advances one computed move), and synced Rotate/Move controls
@@ -41,6 +47,7 @@
       <li>Set up any position: paint stickers on the cube or the flat net, scramble, or import from two photos</li>
       <li>Live validity check telling you whether a position is solvable</li>
       <li>Step-by-step solver that explains every stage, with play/pause, speed and keyboard control</li>
+      <li>Switching to Solve finishes sticker painting and automatically finds a solution for a valid position</li>
       <li>Learn lessons and Practice tests, with a built-in or AI tutor</li>
       <li>Fullscreen mode, Extra drama camera, countdown and cube explosion finale, and one-click Quick Solve</li>
       <li>Save and load named positions across cube sizes, with JSON import/export and copy/paste position codes;

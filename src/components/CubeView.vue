@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { FACE_COLOR_HEX, FACE_NORMALS, FACES, getSpec } from '../core/cube.js';
 import { relativeFaces } from '../core/gamepad.js';
-import { layerTurn, swipeTurn } from '../core/swipe.js';
+import { layerTurn, pointerDragMode, swipeTurn } from '../core/swipe.js';
 
 const props = defineProps({
   n: { type: Number, required: true },
@@ -21,6 +21,7 @@ const props = defineProps({
   hoverColors: { type: Boolean, default: false },
   touchMode: { type: String, default: 'rotate' },
   touchLocked: { type: Boolean, default: false },
+  swapMouseButtons: { type: Boolean, default: false },
 });
 const emit = defineEmits(['paint', 'layerturn', 'hovering', 'zoom']);
 
@@ -122,8 +123,8 @@ function resize() {
 // A full canvas height of dragging is one full turn, as with orbit controls.
 const spin = { vx: 0, vy: 0, dragging: false, lastX: 0, lastY: 0, lastT: 0 };
 const pointers = new Map();
-let touchSwipe = null;
-let touchGesture = false;
+let layerSwipe = null;
+let layerGesture = false;
 let pinchDistance = 0;
 const _q = new THREE.Quaternion();
 const _right = new THREE.Vector3();
@@ -168,14 +169,20 @@ function setZoom(value) {
 }
 
 function onViewPointerDown(e) {
+  const desktop = !window.matchMedia('(hover: none) and (pointer: coarse), (max-width: 600px)').matches;
+  const mode = pointerDragMode(e.pointerType, e.button, {
+    desktop, swapMouseButtons: props.swapMouseButtons, touchMode: props.touchMode, paintable: props.paintable,
+  });
+  if (!mode) return;
+  if (desktop && e.pointerType === 'mouse' && e.button === 2) e.preventDefault();
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   renderer.domElement.setPointerCapture?.(e.pointerId);
-  if (e.pointerType === 'touch' && props.touchMode === 'move') {
-    touchGesture = true;
+  if (mode === 'move') {
+    layerGesture = true;
     spin.dragging = false;
     spin.vx = 0;
     spin.vy = 0;
-    touchSwipe = null;
+    layerSwipe = null;
     if (pointers.size === 1 && !props.locked && !props.touchLocked && !props.paintable && !animating) {
       camera.updateMatrixWorld();
       const hit = pickSticker(e.clientX, e.clientY);
@@ -190,7 +197,8 @@ function onViewPointerDown(e) {
           return { axis, x: (end.x - origin.x) * renderer.domElement.clientWidth,
             y: -(end.y - origin.y) * renderer.domElement.clientHeight };
         });
-        touchSwipe = { pointerId: e.pointerId, x: e.clientX, y: e.clientY, slot, candidates };
+        layerSwipe = { pointerId: e.pointerId, x: e.clientX, y: e.clientY, slot, candidates,
+          speedMultiplier: e.pointerType === 'touch' ? 1.5 : 1 };
       }
     }
     return;
@@ -207,14 +215,15 @@ function onViewPointerDown(e) {
 function onViewPointerMove(e) {
   if (!pointers.has(e.pointerId)) return;
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-  if (touchGesture) {
-    if (touchSwipe && pointers.size === 1 && touchSwipe.pointerId === e.pointerId) {
-      if (props.locked || props.touchLocked || props.paintable || animating) { touchSwipe = null; return; }
-      const move = swipeTurn(spec, touchSwipe.slot, touchSwipe.candidates,
-        e.clientX - touchSwipe.x, e.clientY - touchSwipe.y);
+  if (layerGesture) {
+    if (layerSwipe && pointers.size === 1 && layerSwipe.pointerId === e.pointerId) {
+      if (props.locked || props.touchLocked || props.paintable || animating) { layerSwipe = null; return; }
+      const move = swipeTurn(spec, layerSwipe.slot, layerSwipe.candidates,
+        e.clientX - layerSwipe.x, e.clientY - layerSwipe.y);
       if (move) {
-        touchSwipe = null;
-        emit('layerturn', move, { speedMultiplier: 1.5 });
+        const speedMultiplier = layerSwipe.speedMultiplier;
+        layerSwipe = null;
+        emit('layerturn', move, { speedMultiplier });
       }
     }
     return;
@@ -241,10 +250,10 @@ function onViewPointerMove(e) {
 function onViewPointerUp(e) {
   pointers.delete(e.pointerId);
   if (renderer.domElement.hasPointerCapture?.(e.pointerId)) renderer.domElement.releasePointerCapture(e.pointerId);
-  touchSwipe = null;
+  layerSwipe = null;
   if (e.type === 'pointercancel') { downAt = null; spin.vx = 0; spin.vy = 0; }
   if (pointers.size === 0) {
-    touchGesture = false;
+    layerGesture = false;
     spin.dragging = false;
     // a drag that ended while standing still must not keep spinning
     if (performance.now() - spin.lastT > 80) {
@@ -649,6 +658,7 @@ function refreshHover() {
 // Click (not drag) on a sticker while painting.
 let downAt = null;
 function onPointerDown(e) {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
   downAt = { x: e.clientX, y: e.clientY };
 }
 function onPointerUp(e) {
@@ -713,6 +723,10 @@ function onHoverLeave() {
   clearHover();
 }
 
+function onContextMenu(e) {
+  if (!window.matchMedia('(hover: none) and (pointer: coarse), (max-width: 600px)').matches) e.preventDefault();
+}
+
 onMounted(() => {
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -736,6 +750,7 @@ onMounted(() => {
   renderer.domElement.addEventListener('pointerdown', onPointerDown);
   renderer.domElement.addEventListener('pointerup', onPointerUp);
   renderer.domElement.addEventListener('pointercancel', onPointerUp);
+  renderer.domElement.addEventListener('contextmenu', onContextMenu);
   // Capture phase on the host so a wheel over a sticker turns a layer instead of zooming.
   host.value.addEventListener('wheel', onWheel, { capture: true, passive: false });
   build();
@@ -766,8 +781,8 @@ watch(
   },
 );
 watch(() => [props.hoverColors, props.paintable, props.locked], refreshHover);
-watch(() => props.touchMode, () => {
-  touchSwipe = null;
+watch(() => [props.touchMode, props.swapMouseButtons], () => {
+  layerSwipe = null;
   spin.dragging = false;
   spin.vx = 0;
   spin.vy = 0;

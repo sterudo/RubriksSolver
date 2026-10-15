@@ -15,7 +15,7 @@
       <div id="header-actions" class="header-actions" :class="{ open: mobileMenuOpen }">
         <nav aria-label="Main navigation">
           <button v-for="t in tabs" :key="t.id" :class="{ on: store.mode === t.id }"
-            @click="store.mode = t.id; closeMobileMenu()">
+            @click="selectMode(t.id); closeMobileMenu()">
             {{ t.label }}
           </button>
         </nav>
@@ -42,6 +42,7 @@
             :rumble="store.countdown ? (4 - store.countdown) / 3 : 0"
             :hoverColors="hoverColors"
             :touchMode="touchMode"
+            :swapMouseButtons="store.swapMouseButtons"
             :touchLocked="store.playing || store.solving || store.quickSolveRequest || mobilePending"
             @paint="onPaint"
             @layerturn="(m, options) => turn(m, options)"
@@ -51,8 +52,9 @@
           <div class="overlay">
             <div class="view-controls">
               <button class="reset-view" title="Reset camera" @click="cube?.resetView()">⟲ View</button>
-              <button class="undo-view" title="Undo last move (Backspace when cube is focused)"
-                aria-keyshortcuts="Backspace" :disabled="!canUndo || mobileBusy || store.editing"
+              <button class="undo-view"
+                :title="`${store.editing ? 'Undo last paint action' : 'Undo last move'} (Backspace when cube is focused)`"
+                aria-keyshortcuts="Backspace" :disabled="!canUndo || mobileBusy"
                 @click="undo()">Undo</button>
               <button class="touch-mode-toggle" :aria-pressed="touchMode === 'move'"
                 :aria-label="`Move swipe mode ${touchMode === 'move' ? 'on' : 'off'}`"
@@ -108,8 +110,14 @@
               <span v-if="mobileError" class="status bad" role="alert">{{ mobileError }}</span>
             </div>
           </div>
+        <label class="mouse-drag-control">
+          <input type="checkbox" v-model="store.swapMouseButtons" />
+          Swap left and right mouse drags (left turns layers, right rotates view)
+        </label>
+        <p v-if="store.settingsError" class="status bad" role="alert">{{ store.settingsError }}</p>
         <p class="keys">
-          Drag to look around · wheel over a tile moves it up/down (Alt+wheel: left/right) · wheel elsewhere zooms ·
+          Drag to look around · right-drag a sticker to turn its layer (swapped by checkbox) ·
+          wheel over a tile moves it up/down (Alt+wheel: left/right) · wheel elsewhere zooms ·
           keys R L U D F B (Shift = counter-clockwise) · Backspace undoes when the cube is focused.
         </p>  
         <MovePad />
@@ -156,7 +164,7 @@ import SetupPanel from './components/SetupPanel.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import SolvePanel from './components/SolvePanel.vue';
 import { computeSolution, cubeState, paint, registerAnimator, registerExploder, reset, scramble,
-  canUndo, solved, stepForward, store, turn, undo, validity } from './store.js';
+  canUndo, selectMode, solved, stepForward, store, turn, undo, validity } from './store.js';
 import { FACE_COLOR_HEX } from './core/cube.js';
 import { CONTINUOUS_ACTIONS } from './core/gamepad.js';
 import { handleUndoKey } from './core/keyboard.js';
@@ -370,7 +378,7 @@ function focusCube(e) {
 }
 
 function onKey(e) {
-  if (handleUndoKey(e, viewport.value, canUndo.value && !mobileBusy.value && !store.editing, undo)) return;
+  if (handleUndoKey(e, viewport.value, canUndo.value && !mobileBusy.value, undo)) return;
   const tag = e.target?.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target?.isContentEditable
     || e.ctrlKey || e.metaKey || e.altKey) return;

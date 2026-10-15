@@ -1,5 +1,13 @@
 const LAYERS = [['L', 'R'], ['D', 'U'], ['B', 'F']];
 
+export function pointerDragMode(pointerType, button, { desktop, swapMouseButtons, touchMode, paintable }) {
+  if (pointerType === 'touch') return touchMode;
+  if (pointerType !== 'mouse' || !desktop) return 'rotate';
+  if (button !== 0 && button !== 2) return null;
+  if (paintable) return button === 0 ? 'rotate' : null;
+  return button === (swapMouseButtons ? 0 : 2) ? 'move' : 'rotate';
+}
+
 export function layerTurn(spec, slot, axis, direction) {
   const coordinate = spec.cubies[spec.stickers[slot].cubie].pos[axis];
   const [negative, positive] = LAYERS[axis];

@@ -3,13 +3,13 @@
     <h2>Solve it step by step</h2>
 
     <div class="row">
-      <button class="primary" :disabled="!validity.ok || solving || store.editing" @click="solveNow">
-        {{ solving ? 'Solving…' : 'Find solution' }}
+      <button class="primary" :disabled="!validity.ok || solving || store.solving || store.editing" @click="solveNow">
+        {{ solving || store.solving ? 'Solving…' : 'Find solution' }}
       </button>
       <span v-if="solved && !sol" class="status ok">Already solved!</span>
     </div>
     <ul v-if="!validity.ok" class="status bad">
-      <li v-for="e in validity.errors" :key="e">{{ e }}</li>
+      <li v-for="e in validity.errors" :key="e" v-html="e"></li>
     </ul>
     <p v-if="store.solveError" class="status bad">{{ store.solveError }}</p>
 
