@@ -26,7 +26,7 @@
     </ul>
 
     <div v-if="hintText" class="hint-box">
-      <div><b>{{ hintText.stage }}</b> – {{ hintText.goal }}</div>
+      <div><b>{{ hintText.stage }}</b> - {{ hintText.goal }}</div>
       <div v-if="hintText.move" class="hint-move">
         Next move: <span class="move">{{ hintText.move }}</span>
         <small>({{ hintText.label }})</small>

@@ -71,6 +71,15 @@ nav button.on {
   color: var(--accent); 
 }
 
+button.reset-view {
+  cursor: pointer;
+  padding: 3px;
+  padding-left: 8px;
+  padding-right: 8px;
+  font-size: 12px;
+  border-radius: 999px;
+}
+
 main {
   flex: 1;
   display: grid;
@@ -355,7 +364,7 @@ main {
   background: rgba(27,32,48,0.92);
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 6px 10px;
+  padding: 4px;
   max-width: 320px;
   font-size: 13px;
   text-align: right;
@@ -365,7 +374,7 @@ main {
 .validity ul { margin: 0; padding-left: 16px; text-align: left; }
 /* Last assigned colour, shown while no sticker is hovered */
 .brush-chip {
-  display: inline-flex;
+  display: none;
   padding: 3px;
   background: #1b2030;
   border: 1px solid var(--line);
@@ -557,7 +566,7 @@ input[type='range'] {
 .status.bad {
   color: var(--bad);
   padding-left: 18px;
-  margin: 8px 0;
+  margin: 0px 0;
 }
 .pill {
   background: #1b2030;

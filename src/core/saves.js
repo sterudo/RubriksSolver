@@ -19,7 +19,7 @@ export function fromFacelets(text) {
   const n = clean.length === 54 ? 3 : clean.length === 24 ? 2 : 0;
   if (!n) throw new Error(`A position needs 54 letters (3×3) or 24 letters (2×2); this has ${clean.length}.`);
   const bad = [...clean].find((c) => !FACES.includes(c));
-  if (bad) throw new Error(`"${bad}" is not a face letter – use only U, R, F, D, L, B.`);
+  if (bad) throw new Error(`"${bad}" is not a face letter - use only U, R, F, D, L, B.`);
   const { faceGrid } = getSpec(n);
   const state = new Uint8Array(getSpec(n).slotCount);
   const per = n * n;

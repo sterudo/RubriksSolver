@@ -1,7 +1,7 @@
 <template>
   <section class="panel about">
     <h2>About Rubik's Solver</h2>
-    <p class="note">Learn, teach and solve 2×2 and 3×3 Rubik's cubes right in your browser.</p>
+    <p class="note">Learn, teach and solve 2x2 and 3x3 Rubik's cubes right in your browser.</p>
 
     <dl>
       <dt>Author</dt>
@@ -19,18 +19,18 @@
 
     <h3>Tech stack</h3>
     <ul>
-      <li><strong>Vue 3</strong> – reactive UI (Composition API, single-file components)</li>
-      <li><strong>three.js</strong> – interactive 3D cube, animations and explosion effects</li>
-      <li><strong>Vite</strong> – dev server and static build that runs from any folder</li>
-      <li><strong>Vitest</strong> – unit tests for the cube model, solver and vision code</li>
-      <li>Plain JavaScript solver, no backend – everything runs locally in the browser</li>
+      <li><strong>Vue 3</strong> - reactive UI (Composition API, single-file components)</li>
+      <li><strong>three.js</strong> - interactive 3D cube, animations and explosion effects</li>
+      <li><strong>Vite</strong> - dev server and static build that runs from any folder</li>
+      <li><strong>Vitest</strong> - unit tests for the cube model, solver and vision code</li>
+      <li>Plain JavaScript solver, no backend - everything runs locally in the browser</li>
       <li>Optional AI tutor via Gemini or a local model (LM Studio / Ollama)</li>
     </ul>
 
     <h3>Main features</h3>
     <ul>
-      <li>2×2 and 3×3 cubes with a free drag-and-spin 3D view, pinch/wheel zoom and a synced mobile zoom slider</li>
-      <li>Layer turns by mouse, wheel or keyboard, and undo for manual turns or solution moves</li>
+      <li>2x2 and 3x3 cubes with a free drag-and-spin 3D view, pinch/wheel zoom and a synced mobile zoom slider</li>
+      <li>Layer turns by mouse, wheel, gamepad, touch or keyboard, and undo for manual turns or solution moves</li>
       <li>Mobile: full-width cube with an adjustable-height slider and a 20% smaller starting view,
         hamburger navigation, header Quick Solve,
         always-visible Reset/Scramble/Solve controls (Solve advances one computed move), and synced Rotate/Move controls
@@ -44,6 +44,7 @@
       <li>Fullscreen mode, Extra drama camera, countdown and cube explosion finale, and one-click Quick Solve</li>
       <li>Save and load named positions across cube sizes, with JSON import/export and copy/paste position codes;
         resizable cube frame and draggable panel divider</li>
+      
     </ul>
   </section>
 </template>

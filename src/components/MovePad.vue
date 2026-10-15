@@ -1,5 +1,5 @@
 <template>
-  <details class="movepad" open>
+  <details class="movepad">
     <summary>Move Pad</summary>
     <div class="pad">
       <div v-for="f in faces" :key="f" class="group">

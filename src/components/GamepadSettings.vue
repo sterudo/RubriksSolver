@@ -1,6 +1,6 @@
 <template>
-  <section class="panel">
-    <h2>Gamepad controls</h2>
+  <details class="panel">
+    <summary>Gamepad controls</summary>
     <p class="note">Xbox / XInput-style controllers using the browser's standard mapping. Press a controller button
       to connect. Menu = Start; View = Back. The Xbox/Guide button is not supported.</p>
     <label class="row"><input v-model="gamepad.enabled" type="checkbox" @change="setEnabled" /> Enable gamepad</label>
@@ -33,9 +33,13 @@
     </label>
     <p class="note">Click a binding, release all controls, then hold modifiers and press the main input last.
       Release the combination and click Confirm. Gameplay is paused while assigning.
-      Camera/zoom repeat while held; moves and commands fire once per press. Longer combinations override shorter ones.</p>
+      Camera/zoom repeat while held; moves and commands fire once per press. Longer combinations override shorter ones.
+    <br>
+     RB (Right Bumper), LB (Left Bumper), RT (Right Trigger), LT (Left Trigger),
+     LS (Left Stick), RS (Right Stick), LSB (Left Stick Button), RSB (Right Stick Button)
+  </p>
     <p v-if="conflicts.length" class="status bad">Duplicate combinations: {{ conflicts.join(', ') }}.
-      Clear or change a conflicting binding before saving.</p>
+      Clear or change a conflicting binding before saving.</p>      
     <table class="bindings">
       <thead><tr><th>Action</th><th>Combination</th></tr></thead>
       <tbody>
@@ -43,14 +47,16 @@
           <td>{{ action.label }}</td>
           <td>
             <template v-if="gamepad.capture === action.id">
-              <span>{{ gamepad.candidate ? format(gamepad.candidate) : gamepad.captureReady ? 'Press combination…' : 'Release all controls…' }}</span>
-              <button :disabled="!gamepad.candidate || !!gamepad.held.length" @click="confirm">Confirm</button>
+              <span style="min-width: 150px;
+    display: inline-block;
+    margin-right: 16px;">{{ gamepad.candidate ? format(gamepad.candidate) : gamepad.captureReady ? 'Press combination…' : 'Release all controls…' }}</span>
+              <button :disabled="!gamepad.candidate || !!gamepad.held.length" @click="confirm" style="color:lime;">Confirm</button>
               <button @click="cancelCapture">Cancel</button>
             </template>
             <template v-else>
-              <button @click="beginCapture(action.id)">{{ format(gamepad.draft.bindings[action.id]) }}</button>
-              <button v-if="gamepad.draft.bindings[action.id]" :aria-label="`Clear ${action.label}`"
-                @click="gamepad.draft.bindings[action.id] = null">Clear</button>
+              <button @click="beginCapture(action.id)" style="min-width: 150px; display: inline-block;margin-right: 16px;">{{ format(gamepad.draft.bindings[action.id]) }}</button>
+              <button v-if="gamepad.draft.bindings[action.id]" :aria-label="`Clear ${action.label}`" style="color: red;" 
+                @click="gamepad.draft.bindings[action.id] = null" title="Clear binding for {{ action.label }}">X</button>
             </template>
           </td>
         </tr>
@@ -70,7 +76,7 @@
       Exported JSON can replace <code>src/gamepad-standard.json</code>.</p>
     <p v-if="gamepad.error" class="status bad" role="alert">{{ gamepad.error }}</p>
     <p v-if="gamepad.message" class="note" role="status">{{ gamepad.message }}</p>
-  </section>
+    </details>
 </template>
 
 <script setup>

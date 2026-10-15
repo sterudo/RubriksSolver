@@ -151,7 +151,7 @@ function solvePieces(spec, state, fixedHomes, targets, names, table, labelOf, ma
       const found = searchTracked(table, startSlots, homeSlots, limit);
       if (found && (!best || found.length < best.moves.length)) best = { target, moves: found };
     }
-    if (!best) throw new Error('No solution found for a piece – is the cube state valid?');
+    if (!best) throw new Error('No solution found for a piece - is the cube state valid?');
     for (const mv of best.moves) current = applyPerm(current, spec.moves[mv]);
     steps.push({ label: labelOf(best.target), moves: best.moves });
     fixed = [...fixed, ...best.target.cubies];
@@ -219,7 +219,7 @@ const cap = (s) => s[0].toUpperCase() + s.slice(1);
 
 function runMacroStage(spec, state, macros, goal, stepLabelFor) {
   const found = searchMacros(spec, state, macros, goal);
-  if (!found) throw new Error('Could not finish the last layer – is the cube state valid?');
+  if (!found) throw new Error('Could not finish the last layer - is the cube state valid?');
   const steps = toSteps(found, stepLabelFor);
   let current = state;
   for (const step of steps) for (const mv of step.moves) current = applyPerm(current, spec.moves[mv]);

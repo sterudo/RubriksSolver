@@ -22,40 +22,46 @@
         <button title="Back to start" :disabled="busyOrStart" @click="rewind">⏮</button>
         <button title="Previous move" :disabled="busyOrStart" @click="stepBack">◀</button>
         <button class="primary" :title="playing ? 'Pause' : 'Play'" :disabled="atEnd && !playing" @click="togglePlay">
-          {{ playing ? '⏸' : '▶' }}
+          {{ playing ? '⏸' : '▶' }} (enter/return)
         </button>
-        <button title="Next move" :disabled="atEnd || store.busy" @click="stepForward">▶|</button>
+        <button title="Next move" :disabled="atEnd || store.busy" @click="stepForward">▶| (spacebar)</button>
         <button title="Jump to end" :disabled="atEnd || store.busy" @click="fastForward">⏭</button>
-        <label class="speed">
-          Speed
-          <input v-model.number="store.speed" type="range" min="0.5" max="4" step="0.5" />
-        </label>
+       
       </div>
-      <label class="drama" title="While playing, the camera slowly swirls around the cube">
-        <input v-model="store.drama" type="checkbox" />
-        Extra drama
-        <small>– slow, smooth camera rotation during playback</small>
-      </label>
-      <label class="drama-speed" title="Rotation speed while Extra drama is enabled">
-        Rotation speed
-        <input v-model.number="store.dramaSpeed" type="range" min="0.05" max="1.2" step="0.01" />
-      </label>
+       <div class="bar"><div :style="{ width: `${(store.pointer / Math.max(1, total)) * 100}%` }"></div></div>
+        <details>
+          <summary>Playback settings</summary>
+      
+          <label class="speed">
+              Speed
+              <input v-model.number="store.speed" type="range" min="0.5" max="4" step="0.5" />
+            </label>
+          <label class="drama" title="While playing, the camera slowly swirls around the cube">
+            <input v-model="store.drama" type="checkbox" />
+            Extra drama
+            <small>- slow, smooth camera rotation during playback</small>
+          </label>
+          <label class="drama-speed" title="Rotation speed while Extra drama is enabled">
+            Rotation speed
+            <input v-model.number="store.dramaSpeed" type="range" min="0.05" max="1.2" step="0.01" />
+          </label>
 
-      <label class="drama" title="When the cube is solved: 3-2-1, explosion, and the cube re-forms">
-        <input v-model="store.finale" type="checkbox" />
-        Extra, extra drama
-        <small>– 3-2-1 countdown, then the cube explodes (and re-forms)</small>
-      </label>
+          <label class="drama" title="When the cube is solved: 3-2-1, explosion, and the cube re-forms">
+            <input v-model="store.finale" type="checkbox" />
+            Extra, extra drama
+            <small>- 3-2-1 countdown, then the cube explodes (and re-forms)</small>
+          </label>
 
-      <label class="fullscreen-mode">
-        <input v-model="store.fullscreenOnPlay" type="checkbox" />
-        Fullscreen mode
-        <small>When enabled, hitting Play makes the cube go fullscreen</small>
-      </label>
-      <div class="bar"><div :style="{ width: `${(store.pointer / Math.max(1, total)) * 100}%` }"></div></div>
+          <label class="fullscreen-mode">
+            <input v-model="store.fullscreenOnPlay" type="checkbox" />
+            Fullscreen mode
+            <small>When enabled, hitting Play makes the cube go fullscreen</small>
+          </label>
+      </details>
+     
 
       <div v-if="current" class="now">
-        <div class="now-stage">{{ stageTitle }} <small>– {{ current.step.label }}</small></div>
+        <div class="now-stage">{{ stageTitle }} <small>- {{ current.step.label }}</small></div>
         <div class="moves">
           <span
             v-for="(m, i) in current.step.moves"
@@ -65,26 +71,29 @@
           >{{ m }}</span>
         </div>
       </div>
-      <p v-else-if="atEnd" class="status ok">Finished – the cube is solved.</p>
+      <p v-else-if="atEnd" class="status ok">Finished - the cube is solved.</p>
 
-      <TutorBox :context="tutorContext" />
+      <details>
+          <summary>Tutor</summary>
+          <TutorBox :context="tutorContext" />
 
-      <h3>All stages</h3>
-      <ol class="stages">
-        <li v-for="(stage, si) in sol.stages" :key="stage.id" :class="{ active: current && current.stageIdx === si }">
-          <div class="stage-title">
-            {{ lesson(stage.id).title }}
-            <small>{{ stage.moves.length ? `${stage.moves.length} moves` : 'already done' }}</small>
-          </div>
-          <div class="goal">{{ lesson(stage.id).goal }}</div>
-          <ul v-if="stage.steps.length" class="steps">
-            <li v-for="(step, ti) in stage.steps" :key="ti">
-              <span class="step-label">{{ step.label }}</span>
-              <code>{{ step.moves.join(' ') }}</code>
+          <h3>All stages</h3>
+          <ol class="stages">
+            <li v-for="(stage, si) in sol.stages" :key="stage.id" :class="{ active: current && current.stageIdx === si }">
+              <div class="stage-title">
+                {{ lesson(stage.id).title }}
+                <small>{{ stage.moves.length ? `${stage.moves.length} moves` : 'already done' }}</small>
+              </div>
+              <div class="goal">{{ lesson(stage.id).goal }}</div>
+              <ul v-if="stage.steps.length" class="steps">
+                <li v-for="(step, ti) in stage.steps" :key="ti">
+                  <span class="step-label">{{ step.label }}</span>
+                  <code>{{ step.moves.join(' ') }}</code>
+                </li>
+              </ul>
             </li>
-          </ul>
-        </li>
-      </ol>
+          </ol>
+      </details>
     </template>
   </section>
 </template>

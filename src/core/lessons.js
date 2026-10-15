@@ -15,7 +15,7 @@ export const CONCEPTS = [
   {
     title: 'Anatomy of the cube',
     body: [
-      'A 3x3 has 6 centres, 12 edges and 8 corners. Centres only have one colour and never move relative to each other – they tell you what colour each face will be.',
+      'A 3x3 has 6 centres, 12 edges and 8 corners. Centres only have one colour and never move relative to each other - they tell you what colour each face will be.',
       'Edges have two colours, corners have three. A piece always stays the same piece: the white-green edge can never become a white-blue one.',
       'A 2x2 has only corners. There are no centres, so we fix one corner (bottom-left-back) and solve everything relative to it.',
     ],
@@ -31,7 +31,7 @@ export const CONCEPTS = [
     title: 'Algorithms are tools',
     body: [
       'An algorithm is a memorised move sequence that changes a few pieces while putting everything else back. The last-layer algorithms here only disturb the top layer.',
-      'You do not need to understand them completely at first – learn what they do (e.g. "Sune twists corners"), practise them with the Try button, then the understanding follows.',
+      'You do not need to understand them completely at first - learn what they do (e.g. "Sune twists corners"), practise them with the Try button, then the understanding follows.',
     ],
   },
   {

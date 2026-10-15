@@ -1,6 +1,6 @@
 <template>
-  <section class="panel">
-    <h2>Tutor settings</h2>
+  <details class="panel">
+    <summary>Tutor / AI Configuration</summary>
     <p class="note">
       The built-in tutor works offline. Connect an AI model to get explanations in natural language and answers to your
       own questions. Everything is stored in this browser's localStorage and saved automatically.
@@ -68,7 +68,8 @@
       </p>
     </fieldset>
     <p class="note">Saved ✓ — settings are stored automatically.</p>
-  </section>
+  </details>
+  <br>
   <GamepadSettings />
 </template>
 

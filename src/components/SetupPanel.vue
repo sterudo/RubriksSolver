@@ -53,7 +53,7 @@
 
     <p class="note">
       Tip: the centres of a 3×3 define the colour of each face and cannot be repainted. For a 2×2, any consistent colour
-      scheme works – the bottom-left-back corner is used as the reference.
+      scheme works - the bottom-left-back corner is used as the reference.
     </p>
   </section>
 </template>

@@ -68,9 +68,9 @@
             </span>
 
             <div v-if="store.mode === 'setup'" class="validity" :class="{ ok: validity.ok }">
-              <p v-if="validity.ok" class="status ok small">This position is valid and solvable.</p>
+              <p v-if="validity.ok" class="status ok small">Valid and solvable.</p>
               <ul v-else class="status bad small">
-                <li v-for="e in validity.errors" :key="e">{{ e }}</li>
+                <li v-for="e in validity.errors" :key="e" v-html="e"></li>
               </ul>
             </div>
  

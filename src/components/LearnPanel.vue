@@ -15,7 +15,7 @@
       <p v-for="(p, i) in c.body" :key="i">{{ p }}</p>
     </details>
 
-    <h3>The {{ store.n }}×{{ store.n }} method – layer by layer</h3>
+    <h3>The {{ store.n }}×{{ store.n }} method - layer by layer</h3>
     <ol class="lessons">
       <li v-for="l in STAGE_LESSONS[store.n]" :key="l.id">
         <div class="lesson-title">{{ l.title }}</div>
@@ -30,7 +30,7 @@
       </li>
     </ol>
     <p class="note">
-      "Try" performs the algorithm on the cube shown on the left – scramble it first, or use Solve to see the stages
+      "Try" performs the algorithm on the cube shown on the left - scramble it first, or use Solve to see the stages
       happen on your own position.
     </p>
   </section>

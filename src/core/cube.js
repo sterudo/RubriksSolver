@@ -302,6 +302,18 @@ export function canonical2x2(state) {
 }
 
 export function analyzeState(state, n) {
+
+  function formatColor(name) {
+    switch (name.toLowerCase()) {
+      case 'white': return '<span style="color:white;font-weight:bold;">White</span>';
+      case 'yellow': return '<span style="color:yellow;font-weight:bold">Yellow</span>';
+      case 'red': return '<span style="color:red;font-weight:bold;">Red</span>';
+      case 'orange': return '<span style="color:orange;font-weight:bold;">Orange</span>';
+      case 'blue': return '<span style="color:blue;font-weight:bold;">Blue</span>';
+      case 'green': return '<span style="color:green;font-weight:bold;">Green</span>';      
+    }
+  }
+
   const spec = getSpec(n);
   if (state.length !== spec.slotCount) return { ok: false, errors: ['Wrong number of stickers'] };
   const errors = [];
@@ -312,7 +324,7 @@ export function analyzeState(state, n) {
     const { corners, errors: pieceErrors } = analyzePieces(canon.state, 2);
     errors.push(...pieceErrors);
     if (!pieceErrors.length && corners.reduce((s, c) => s + c.twist, 0) % 3 !== 0) {
-      errors.push('One corner is twisted – this position cannot be solved');
+      errors.push('One corner is twisted - this position cannot be solved');
     }
     return { ok: !errors.length, errors, canonical: canon };
   }
@@ -320,7 +332,7 @@ export function analyzeState(state, n) {
   const counts = new Array(6).fill(0);
   for (const c of state) counts[c]++;
   counts.forEach((cnt, f) => {
-    if (cnt !== 9) errors.push(`${FACE_COLOR_NAMES[f]} appears ${cnt} times (needs 9)`);
+    if (cnt !== 9) errors.push(`${formatColor(FACE_COLOR_NAMES[f])} appears ${cnt} times (needs 9)`);
   });
   spec.cubies.forEach((c) => {
     if (c.kind === 'center' && state[c.slots[0]] !== spec.stickers[c.slots[0]].face) {
@@ -343,7 +355,7 @@ export function analyzeState(state, n) {
     return perm;
   };
   if (parity(toIndex(corners, 'corner')) !== parity(toIndex(edges, 'edge'))) {
-    errors.push('Two pieces are swapped – this position cannot be solved');
+    errors.push('Two pieces are swapped - this position cannot be solved');
   }
   return { ok: !errors.length, errors };
 }

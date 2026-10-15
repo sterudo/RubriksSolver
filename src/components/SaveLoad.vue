@@ -119,7 +119,7 @@ async function copyCode() {
     say('Position code copied to the clipboard.');
   } catch {
     code.value = text;
-    say('Clipboard not available – the code is in the box below, copy it from there.');
+    say('Clipboard not available - the code is in the box below, copy it from there.');
   }
 }
 

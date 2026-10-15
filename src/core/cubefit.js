@@ -421,7 +421,7 @@ function refine(M, n, start, f0) {
 }
 
 // image: ImageData-like. box: optional rough cube box in 0-1000 coordinates (e.g. from the
-// AI). Returns { handles (0-1000 image coordinates), score, margin, pose } – or null when
+// AI). Returns { handles (0-1000 image coordinates), score, margin, pose } - or null when
 // nothing cube-like was found.
 export function fitCube(image, n, { box = null } = {}) {
   const M = prepareMaps(image);

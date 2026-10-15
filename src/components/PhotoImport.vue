@@ -3,12 +3,12 @@
     <p class="hint">
       Photo 1: look straight at one <b>corner</b> of the cube. Photo 2: flip the cube over like a pancake (about the
       photo's horizontal axis) so the <b>opposite corner</b> faces the camera. Drag the 7 handles so the lines follow the
-      cube outline – the dots show where colours are read.
+      cube outline - the dots show where colours are read.
     </p>
     <div class="photos">
       <div v-for="p in 2" :key="p" class="photo">
         <label class="file">
-          <span>{{ p === 1 ? 'Photo 1 – first corner' : 'Photo 2 – opposite corner' }}</span>
+          <span>{{ p === 1 ? 'Photo 1 - first corner' : 'Photo 2 - opposite corner' }}</span>
           <input type="file" accept="image/*" @change="(e) => load(p - 1, e)" />
         </label>
         <canvas
@@ -38,7 +38,7 @@
     <label class="wb">
       <input v-model="whiteBalance" type="checkbox" />
       <span>
-        White balance – if a white tile is found in a photo, use it as that photo's white point
+        White balance - if a white tile is found in a photo, use it as that photo's white point
         <small>(helps with warm/cool lighting and differently lit photos)</small>
       </span>
     </label>
@@ -182,7 +182,7 @@ async function alignPhoto(i) {
     let how = 'image analysis';
     if (best && best.score >= MIN_FIT_SCORE) {
       applyHandles(i, img, best.handles);
-      if (useAI) ai[i].text = 'Cube outlined by image analysis – asking the AI to double-check…';
+      if (useAI) ai[i].text = 'Cube outlined by image analysis - asking the AI to double-check…';
     }
     let aiResult = null;
     if (aiPromise) {
@@ -202,7 +202,7 @@ async function alignPhoto(i) {
       ai[i].state = 'ok';
       ai[i].text =
         `Cube outlined by ${how} (fit ${Math.round(best.score * 100)}%). ` +
-        'The outline is a perspective-correct cube model – fine-tune the handles if needed.';
+        'The outline is a perspective-correct cube model - fine-tune the handles if needed.';
       return;
     }
     // no convincing model fit: use the AI's rough box when there is one
@@ -210,16 +210,16 @@ async function alignPhoto(i) {
       const refined = refineBox(pixels, aiResult.box);
       applyHandles(i, img, refined ? hexagonFromBox(refined) : aiResult.handles);
       ai[i].state = 'ok';
-      ai[i].text = 'The cube could not be fitted precisely; the outline is only a rough box from the AI – please adjust the handles.';
+      ai[i].text = 'The cube could not be fitted precisely; the outline is only a rough box from the AI - please adjust the handles.';
       return;
     }
     ai[i].state = 'bad';
     ai[i].text =
-      'Could not find a cube in this photo' + (aiResult?.error ? ` (${aiResult.error})` : '') + ' – drag the handles by hand.';
+      'Could not find a cube in this photo' + (aiResult?.error ? ` (${aiResult.error})` : '') + ' - drag the handles by hand.';
   } catch (e) {
     if (e.kind === 'abort' || controller.signal.aborted) return;
     ai[i].state = 'bad';
-    ai[i].text = `${e.message} – drag the handles by hand.`;
+    ai[i].text = `${e.message} - drag the handles by hand.`;
   } finally {
     if (aiControllers[i] === controller) ai[i].busy = false;
   }
@@ -332,12 +332,12 @@ function classifyNow() {
   if (whiteBalance.value) {
     notes.push(
       missing.length
-        ? `No white tile found in photo ${missing.join(' and ')} – colours used as they are there.`
+        ? `No white tile found in photo ${missing.join(' and ')} - colours used as they are there.`
         : 'White balance applied to both photos.',
     );
   }
   warn.value = res.warnings.length > 0 || missing.length > 0;
-  message.value = [res.warnings[0] || 'Colours imported – check them in the cube net and fix any mistakes.', ...notes].join(' ');
+  message.value = [res.warnings[0] || 'Colours imported - check them in the cube net and fix any mistakes.', ...notes].join(' ');
   emit('import', res.state);
 }
 

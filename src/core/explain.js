@@ -82,7 +82,7 @@ export async function request(url, { method = 'GET', headers = {}, body, signal,
 
 export function explainGeminiError(e, model) {
   if (e.kind === 'network' || e.kind === 'timeout') {
-    return 'Cannot reach generativelanguage.googleapis.com – check your internet connection, proxy or ad-blocker.';
+    return 'Cannot reach generativelanguage.googleapis.com - check your internet connection, proxy or ad-blocker.';
   }
   if (e.status === 400 && /api key|API_KEY/i.test(e.message)) return `The API key is not valid. (${e.message})`;
   if (e.status === 401 || e.status === 403) return `The key was rejected or lacks permission (HTTP ${e.status}): ${e.message}`;
@@ -97,7 +97,7 @@ export async function describeLocalNetworkFailure(base) {
   try {
     await fetch(`${base}/models`, { mode: 'no-cors', cache: 'no-store' });
   } catch {
-    return `Cannot reach ${base} – the server is not running or the address/port is wrong.`;
+    return `Cannot reach ${base} - the server is not running or the address/port is wrong.`;
   }
   return (
     `The server at ${base} is running, but the browser blocked its reply (CORS is disabled on the server). ` +
@@ -204,7 +204,7 @@ export async function testLocal(settings) {
 
 export function stepPrompt(ctx) {
   return (
-    `Cube: ${ctx.n}x${ctx.n}. Stage: "${ctx.stageTitle}" – goal: ${ctx.goal}\n` +
+    `Cube: ${ctx.n}x${ctx.n}. Stage: "${ctx.stageTitle}" - goal: ${ctx.goal}\n` +
     `Lesson text: ${ctx.concept}\n` +
     (ctx.stepLabel ? `Current step: ${ctx.stepLabel}. Moves in this step: ${ctx.moves.join(' ') || 'none'}.\n` : '') +
     (ctx.question ? `Learner question: ${ctx.question}\n` : 'Explain this step in your own words and say what the learner should look for.\n')

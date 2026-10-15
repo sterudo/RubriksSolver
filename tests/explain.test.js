@@ -56,7 +56,7 @@ describe('testLocal', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
     const r = await testLocal(local);
     expect(r.ok).toBe(false);
-    expect(r.message).toMatch(/Cannot reach http:\/\/localhost:1234\/v1 – the server is not running/);
+    expect(r.message).toMatch(/Cannot reach http:\/\/localhost:1234\/v1 - the server is not running/);
   });
 
   it('tells a running server that blocks the browser (CORS) apart from a dead one', async () => {

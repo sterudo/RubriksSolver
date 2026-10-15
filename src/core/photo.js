@@ -1,6 +1,6 @@
 // Reads a cube position from two photos: one looking at a corner (top-front-right) and
 // one looking at the opposite corner (bottom-back-left), both with the same image
-// layout – the cube is flipped over like a pancake about the photo's horizontal axis
+// layout - the cube is flipped over like a pancake about the photo's horizontal axis
 // between the two shots.
 //
 // For each photo the user marks 7 points: the corner nearest the camera (centre C) and
@@ -17,7 +17,7 @@ const QUADS = [
   { name: 'right', ea: 2, eb: 4, far: 3, face: [1, 5], across: ['top', 'left'] },
 ];
 // Which face each quad shows: photo 1 sees U (top), F (left), R (right);
-// photo 2 – after the pancake flip – sees D (top), L (left), B (right).
+// photo 2 - after the pancake flip - sees D (top), L (left), B (right).
 const quadFace = (photo, name) => QUADS.find((q) => q.name === name).face[photo];
 
 export const HANDLE_LABELS = ['Corner (centre)', 'Top', 'Upper right', 'Lower right', 'Bottom', 'Lower left', 'Upper left'];
